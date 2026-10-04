@@ -1,0 +1,121 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600">
+<title>CLAWBERED mascot: the Mouthpiece</title>
+<defs>
+<style>
+.o{stroke:#111317;stroke-width:5;stroke-linejoin:round;stroke-linecap:round}
+.r{fill:#E8382B}.d{fill:#9C1418}.c{fill:#F3E9D2}.k{fill:#111317}.y{fill:#FFD23F}
+.ln{fill:none;stroke:#111317;stroke-linecap:round;stroke-linejoin:round}
+</style>
+</defs>
+<!-- sun, deco ring and sunset bars -->
+<circle cx="300" cy="270" r="230" fill="none" stroke="#F3E9D2" stroke-width="3"/>
+<circle cx="300" cy="270" r="214" class="c"/>
+<path d="M60 420H540M60 444H540M60 466H540" stroke="#111317" stroke-width="7"/>
+<path d="M40 556H560" stroke="#F3E9D2" stroke-width="4"/>
+<!-- swing lines -->
+<path fill="none" stroke="#FFD23F" stroke-width="6" stroke-linecap="round" d="M550 186Q572 264 546 338M572 222Q582 280 566 326"/>
+<!-- chess clock: left plunger slammed flat, right one up -->
+<g class="o">
+<path class="k" d="M404 466H586L578 552H412Z" stroke="#F3E9D2" stroke-width="4"/>
+<path class="y" d="M444 452H508V466H444Z"/>
+<path class="y" d="M532 426H562V466H532Z"/>
+<path class="c" d="M524 426H570V418H524Z"/>
+<circle cx="460" cy="509" r="28" class="c"/>
+<circle cx="542" cy="509" r="28" class="c"/>
+<path class="ln" stroke-width="4" d="M460 509V489M460 509L472 515M542 509V487M542 509L530 501"/>
+<path d="M554 482L562 472" stroke="#E8382B" stroke-width="5"/>
+</g>
+<!-- two short jointed lobster legs tucked behind -->
+<g class="o">
+<path class="d" d="M274 422L230 470L246 486L294 442Z"/>
+<path class="d" d="M306 442L354 486L370 470L326 422Z"/>
+<path class="r" d="M225 475L216 530L236 534L251 481Z"/>
+<path class="r" d="M349 481L364 534L384 530L375 475Z"/>
+<path class="r" d="M216 529L237 534L204 556Z"/>
+<path class="r" d="M363 534L384 529L396 556Z"/>
+<path class="r" d="M248 484L238 490L228 484L228 472L238 466L248 472ZM372 484L362 490L352 484L352 472L362 466L372 472Z"/>
+</g>
+<!-- abdomen with pleura + tail fan -->
+<g class="o">
+<path class="r" d="M250 296H350L346 322L340 336L334 326H266L260 336L254 322Z"/>
+<path class="r" d="M260 326H340L336 352L330 366L324 356H276L270 366L264 352Z"/>
+<path class="r" d="M268 356H332L328 382L322 396L317 386H283L278 396L272 382Z"/>
+<path class="r" d="M276 386H324L320 412L315 426L311 416H289L285 426L280 412Z"/>
+<path class="r" d="M283 416H317L314 444H286Z"/>
+<path class="r" d="M292 442L240 500L250 528L286 456Z"/>
+<path class="r" d="M308 442L360 500L350 528L314 456Z"/>
+<path class="d" d="M294 446L262 516L282 538L298 460Z"/>
+<path class="d" d="M306 446L338 516L318 538L302 460Z"/>
+<path class="r" d="M288 444H312L318 540L300 548L282 540Z"/>
+</g>
+<!-- upper body leans into the swing -->
+<g transform="rotate(3 300 300)">
+<!-- antennae, Dali curls -->
+<g fill="none" stroke-linecap="round">
+<path stroke="#111317" stroke-width="12" d="M266 138C226 128 186 108 184 72C182 40 210 26 228 40C242 52 232 70 216 66"/>
+<path stroke="#111317" stroke-width="12" d="M338 132C396 116 454 90 456 52C458 20 424 10 408 26C396 40 408 56 424 50"/>
+<path stroke="#E8382B" stroke-width="5" d="M266 138C226 128 186 108 184 72C182 40 210 26 228 40C242 52 232 70 216 66"/>
+<path stroke="#E8382B" stroke-width="5" d="M338 132C396 116 454 90 456 52C458 20 424 10 408 26C396 40 408 56 424 50"/>
+</g>
+<!-- carapace -->
+<path class="o r" d="M262 160H338L360 210L352 300H248L240 210Z"/>
+<path class="d" d="M300 205L352 300H300Z"/>
+<path class="ln" stroke-width="3" d="M244 245H356M248 272H352"/>
+<path class="o r" d="M240 210L230 200L244 194ZM360 210L370 200L356 194Z"/>
+<!-- collar + skinny tie -->
+<path class="o c" d="M270 196L300 224L330 196L324 216L300 236L276 216Z"/>
+<path class="o k" d="M293 222H307L304 233L311 302L300 314L289 302L296 233Z"/>
+<!-- face -->
+<path class="o r" d="M256 128H344L348 176L324 202H276L252 176Z"/>
+<path class="d" d="M300 128H344L348 176L324 202H300Z"/>
+<path class="o r" d="M252 160L240 150L254 146ZM348 160L360 150L346 146Z"/>
+<path class="o r" d="M300 168L292 150L300 126L308 150Z"/>
+<!-- narrow sly eyes, cutting toward the clock -->
+<path class="o c" d="M262 160Q277 150 292 158Q278 168 262 160Z"/>
+<path class="o c" d="M308 158Q323 150 338 160Q322 168 308 158Z"/>
+<circle cx="285" cy="159" r="3.8" class="k"/><circle cx="331" cy="159" r="3.8" class="k"/>
+<path class="ln" stroke-width="6" d="M258 151L293 156M307 154L342 143"/>
+<path class="ln" stroke-width="4" d="M282 186Q302 194 320 178L324 174"/>
+<!-- fedora -->
+<g transform="rotate(-9 300 128)" class="o">
+<path class="k" d="M210 132Q300 112 390 132L384 144Q300 130 216 144Z"/>
+<path class="k" d="M252 128L258 74L282 62L300 72L318 62L342 74L348 128Z"/>
+<path class="r" d="M254 106H346L348 126H252Z"/>
+<path class="ln" stroke="#F3E9D2" stroke-width="3" d="M300 78V100M262 80L258 102"/>
+</g>
+<!-- left arm, chunky -->
+<g class="o">
+<path class="r" d="M243 219L190 334L218 346L273 233Z"/>
+<path class="r" d="M212 327L173 304L159 328L196 353Z"/>
+<path class="d" d="M220 350L204 359L188 350L188 330L204 321L220 330Z"/>
+</g>
+<!-- black knight, solid cream edge -->
+<g transform="translate(114 128) scale(1.12)" stroke="#F3E9D2" stroke-width="4" stroke-linejoin="round">
+<path class="k" d="M4 88H64L60 76H8Z"/>
+<path class="k" d="M12 76C12 58 22 50 28 42L14 46C6 49 0 43 3 37L20 15L22 3L29 9L34 1L39 12C56 22 62 48 58 76Z"/>
+<circle cx="25" cy="23" r="3.6" class="c" stroke="none"/>
+</g>
+<g class="o" transform="translate(30 98)">
+<path class="r" d="M122 222L100 180L112 140L166 136L180 176L158 222Z"/>
+<path class="d" d="M140 138L166 136L180 176L158 222L140 222Z"/>
+<path class="r" d="M100 180L80 140L82 112L96 116L100 136L120 146Z"/>
+<path class="r" d="M146 138L154 124L150 110L164 108L176 130L172 160Z"/>
+</g>
+</g>
+<!-- right arm, chunky -->
+<g class="o">
+<path class="r" d="M358 228L449 162L431 138L338 200Z"/>
+<path class="r" d="M426 154L441 210L471 202L454 146Z"/>
+<path class="d" d="M456 160L440 169L424 160L424 140L440 131L456 140Z"/>
+</g>
+<!-- the oversized crusher claw, slammed onto the left plunger -->
+<g class="o" stroke-width="4.2" transform="translate(476 452) scale(1.2) translate(-485 -456)">
+<path class="r" d="M488 362L536 358L518 410L490 456L484 424L492 396Z"/>
+<path class="r" d="M438 360L484 362L478 396L484 424L480 454L452 410Z"/>
+<path class="r" d="M450 236L496 234L532 290L536 362L434 362L422 300Z"/>
+<path class="d" d="M480 235L496 234L532 290L536 362L484 362Z"/>
+<path class="ln" stroke-width="2.5" d="M428 316H535"/>
+</g>
+<!-- impact -->
+<path fill="none" stroke="#FFD23F" stroke-width="6" stroke-linecap="round" d="M446 444L426 428M436 458L414 458M506 444L522 428"/>
+</svg>

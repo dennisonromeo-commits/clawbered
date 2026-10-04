@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+<title>CLAWBERED</title>
+<!-- red head tile -->
+<rect x="1.5" y="1.5" width="61" height="61" rx="13" fill="#E8382B" stroke="#111317" stroke-width="3"/>
+<path d="M32 3H50Q61 3 61 14V50Q61 61 50 61H32Z" fill="#9C1418"/>
+<!-- fedora, tilted -->
+<path fill="#111317" d="M1 31L63 21V29L1 39Z"/>
+<path fill="#111317" d="M14 31L16 8L28 3L32 7L37 3L48 7L50 24Z"/>
+<path fill="#F3E9D2" d="M14.6 23.5L49.7 18L50.2 23L14.3 28.6Z"/>
+<!-- narrow sly eye slits -->
+<path fill="#F3E9D2" stroke="#111317" stroke-width="2.5" stroke-linejoin="round" d="M8 46L27 42L26 49L10 50Z"/>
+<path fill="#F3E9D2" stroke="#111317" stroke-width="2.5" stroke-linejoin="round" d="M36 41L56 37L55 45L37 46Z"/>
+<!-- smirk -->
+<path fill="none" stroke="#111317" stroke-width="3.5" stroke-linecap="round" d="M24 56Q34 59 44 53"/>
+</svg>
