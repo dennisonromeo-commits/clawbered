@@ -22,6 +22,32 @@ export function buildPositions(san) {
   return out;
 }
 
+/** Brilliant tag (Chess.com Game Review). Accepts: true, a count, ply numbers, {ply} objects,
+ *  move labels like "14...Qxd2+" / "15.Qxf7+", or bare SAN. Returns a Set of 0-based ply indexes. */
+export function brilliantRaw(g) {
+  return g.brilliant ?? g.brilliants ?? g.brilliant_moves ?? g.review?.brilliant ?? g.cc_brilliant;
+}
+export function brilliantPlies(g) {
+  const v = brilliantRaw(g), san = g.san || [], out = new Set();
+  const norm = (m) => String(m).replace(/[!?]+$/g, "").replace(/[+#]$/, "");
+  const arr = Array.isArray(v) ? v : v && typeof v === "object" ? [v] : typeof v === "string" ? [v] : [];
+  for (const x of arr) {
+    if (Number.isInteger(x)) { out.add(x); continue; }
+    if (x && typeof x === "object") { if (Number.isInteger(x.ply)) { out.add(x.ply); continue; } }
+    const lab = typeof x === "string" ? x : x?.label || x?.san;
+    if (!lab) continue;
+    const m = String(lab).trim().match(/^(\d+)\s*(\.\.\.|\.)\s*(.+)$/);
+    if (m) {
+      const ply = (parseInt(m[1]) - 1) * 2 + (m[2] === "..." ? 1 : 0);
+      if (!san.length || norm(san[ply]) === norm(m[3])) { out.add(ply); continue; }
+    }
+    const want = norm(m ? m[3] : lab), mine = g.color === "Black" ? 1 : 0;
+    const i = san.findIndex((s2, k) => k % 2 === mine && norm(s2) === want);
+    if (i >= 0) out.add(i);
+  }
+  return out;
+}
+
 export function fmtClock(s) {
   if (s == null || isNaN(s)) return "–";
   s = Math.max(0, s);
@@ -109,8 +135,7 @@ export class Replay {
     this.scrub.max = n;
     // eval in centipawns from HIS side, per position (index p = after p plies)
     this.evMe = g.ev && g.ev.length ? [null, ...g.ev.map((v) => (v == null ? null : this.me === "white" ? v : -v))] : null;
-    const b = g.brilliant ?? g.brilliants ?? g.brilliant_moves ?? g.review?.brilliant ?? g.cc_brilliant;
-    this.brilPlies = new Set((Array.isArray(b) ? b : b && typeof b === "object" ? [b] : []).map((x) => (typeof x === "number" ? x : x?.ply)).filter(Number.isInteger));
+    this.brilPlies = brilliantPlies(g);
     this.renderMoves();
     this.renderGraphs();
     const who = (side) => side === this.me

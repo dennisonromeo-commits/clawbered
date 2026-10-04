@@ -379,3 +379,17 @@ cg-board square.check{background:radial-gradient(ellipse at center,rgba(255,0,0,
   .kicker{white-space:nowrap;font-size:12px}
   .nav{-webkit-mask-image:linear-gradient(90deg,#000 78%,transparent);mask-image:linear-gradient(90deg,#000 78%,transparent);padding-right:28px}
 }
+
+/* From the vault */
+.vault-list{display:grid;grid-template-columns:minmax(0,760px);gap:22px}
+.vault-card{background:#e9dcc0;color:#1a1210;border:3px solid #000;border-radius:6px;padding:22px 22px 18px;box-shadow:8px 8px 0 #000;transform:rotate(-.6deg);
+  background-image:radial-gradient(rgba(0,0,0,.07) 1px,transparent 1.2px),linear-gradient(transparent 31px,rgba(0,0,0,.05) 32px);background-size:4px 4px,100% 32px}
+.vault-card:hover{box-shadow:10px 10px 0 var(--deep)}
+.vault-card h4{font-size:34px;color:#1a1210}
+.vault-card .meta{color:#4a3c30}
+.vault-card .cap{font-size:16px}
+.vault-stamp{position:absolute;top:14px;right:16px;font:22px/1 var(--display);letter-spacing:.08em;color:var(--deep);border:4px double var(--deep);padding:7px 12px 5px;transform:rotate(7deg);opacity:.85;background:rgba(233,220,192,.6)}
+.vault-body{display:flex;gap:18px;align-items:flex-start}
+.vault-body .mini{width:150px}
+.vault-chips{margin-top:8px}
+@media (max-width:600px){.vault-body{flex-direction:column}.vault-body .mini{width:100%;max-width:260px}.vault-stamp{position:static;display:inline-block;align-self:flex-start;font-size:17px;margin-bottom:6px}.vault-card h4{font-size:28px}}

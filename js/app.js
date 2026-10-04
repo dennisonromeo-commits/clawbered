@@ -1,15 +1,15 @@
 // CLAWBERED v1 front end. Loads pipeline JSON and renders every section.
-import { Replay, buildPositions, miniBoard, HANDLES, baseSeconds } from "./replay.js";
+import { Replay, buildPositions, miniBoard, HANDLES, baseSeconds, brilliantRaw, brilliantPlies } from "./replay.js";
 
 const CFG = window.CLAWBERED_CONFIG || { dataPaths: ["data/"] };
-const FILES = ["summary", "highlights", "games_of_period", "clock_chaos", "openings", "rating_timeline", "heatmap", "upsets", "endgame"];
+const FILES = ["summary", "highlights", "games_of_period", "clock_chaos", "openings", "rating_timeline", "heatmap", "upsets", "endgame", "vault"];
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const nf = (n) => Number(n).toLocaleString("en-US");
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const fmtDate = (d) => { const [y, m, dd] = d.split("-").map(Number); return `${MON[m - 1]} ${dd}, ${y}`; };
-const TERM = { mate: "checkmate", time: "on time", resign: "resignation", abandon: "abandonment", timevsinsufficient: "on time" };
+const TERM = { mate: "checkmate", time: "on time", resign: "resignation", abandon: "abandonment", timevsinsufficient: "on time", checkmate: "checkmate" };
 const minus = (n) => (n < 0 ? `−${Math.abs(n)}` : `${n}`);
 // Lichess clocks are whole seconds, so 0.0 there means "under a second"
 const clk = (g) => (g.plat === "Lichess" && g.myclk === 0 ? "<1s" : `${g.myclk.toFixed(1)}s`);
@@ -30,11 +30,11 @@ function dropPgn(o) {
 
 // "Brilliant" tag from Chess.com Game Review (future field). Accepts several shapes; returns {count, plies[]} or null.
 function brilliantOf(g) {
-  const v = g.brilliant ?? g.brilliants ?? g.brilliant_moves ?? g.review?.brilliant ?? g.cc_brilliant;
+  const v = brilliantRaw(g);
   if (v == null || v === false || v === 0 || (Array.isArray(v) && !v.length)) return null;
-  const arr = Array.isArray(v) ? v : typeof v === "object" ? [v] : [];
-  const plies = arr.map((x) => (typeof x === "number" ? x : x?.ply)).filter((x) => Number.isInteger(x));
-  return { count: typeof v === "number" ? v : arr.length || 1, plies };
+  const plies = [...brilliantPlies(g)];
+  const n = typeof v === "number" ? v : Array.isArray(v) ? v.length : 1;
+  return { count: Math.max(n, plies.length, 1), plies };
 }
 const brilliantSticker = (g) => { const b = brilliantOf(g); return b ? [b.count > 1 ? `${b.count}× BRILLIANT !!` : "BRILLIANT !!"] : []; };
 
@@ -199,6 +199,7 @@ function renderStats(D) {
 
 function periodTitle(it) {
   if (it.title) return it.title;
+  if (brilliantOf(it) && it.key_move?.move_number) return `BRILLIANT ON MOVE ${it.key_move.move_number}`;
   if (it.term === "mate") return `MATE ON MOVE ${it.moves}`;
   if (it.term === "time") return `FLAGGED ON MOVE ${it.moves}`;
   if (it.term === "resign") return `KNOCKOUT IN ${it.moves}`;
@@ -445,6 +446,31 @@ function renderGrind(D) {
   hydrateMinis($("grind-list"));
 }
 
+// From the vault: hand-picked pre-2026 games. Registered for replay only; never part of stats or the 2026 pools.
+function renderVault(D) {
+  const V = D.vault, games = (V?.games || []).filter((g) => g && g.san && g.san.length);
+  const sec = $("vault");
+  if (!games.length) { sec.style.display = "none"; return; }
+  $("vault-note").textContent = V.note || "Hand-picked games from before 2026. Not counted in any 2026 stats.";
+  $("vault-list").innerHTML = games.map((v, i) => {
+    const g = register({ ...v, id: v.id || `vault-${i + 1}` }, { title: v.title || "From the vault", stickers: [...(v.accuracy != null ? [`${v.accuracy}% ACCURACY`] : [])] });
+    delete g.score; // keep it out of the Game-of-the-Period pools
+    const year = String(g.date || "").slice(0, 4);
+    const km = g.key_move?.label ? `${g.key_move.label}${brilliantPlies(g).has(g.key_ply) ? "!!" : ""}` : "";
+    return `<article class="vault-card gcard" data-card="${esc(g.uid)}">
+      <div class="vault-stamp">FROM THE VAULT · ${esc(year)}</div>
+      <div class="vault-body">${mini(g)}<div>
+        <h4>${esc(g.title)}</h4>
+        <div class="meta">${esc(`${g.plat} · ${g.tclass} ${g.tc} · ${fmtDate(g.date)}`)}<br>${esc(resultLine(g))}<br>${esc(g.opening || "")}</div>
+        <div class="vault-chips">${(g.stickers || []).map((s) => `<span class="chip${/BRILLIANT/.test(s) ? " bril" : ""}">${esc(s)}</span>`).join("")}</div>
+      </div></div>
+      <p class="cap">${esc(g.caption || "")}</p>
+      <div class="row"><span class="meta">${g.excluded_from_stats ? "Archive piece · not in 2026 stats" : ""}</span><button class="btn" data-play="${esc(g.uid)}">▶ Replay${km ? " · " + esc(km) : ""}</button></div>
+    </article>`;
+  }).join("");
+  hydrateMinis($("vault-list"));
+}
+
 function registerAll(D) {
   // highlights first (richest: title, stickers, evals)
   for (const h of D.highlights?.items || []) register(h);
@@ -481,7 +507,7 @@ async function main() {
   catch (e) { console.error(e); $("hero-tickets").innerHTML = `<div class="ticket"><div class="l">Data not found</div><div class="s">${esc(e.message)}</div></div>`; return; }
   window.CLAWBERED_DATA = D;
   registerAll(D);
-  const steps = [renderHero, renderStats, renderReel, renderGOTW, renderChaos, renderOpenings, renderRatings, renderHeat, renderUpsets, renderGrind, heroBoard];
+  const steps = [renderHero, renderStats, renderReel, renderGOTW, renderChaos, renderOpenings, renderRatings, renderHeat, renderUpsets, renderGrind, renderVault, heroBoard];
   for (const f of steps) { try { f(D); } catch (e) { console.error(`[CLAWBERED] ${f.name} failed`, e); } }
   hydrateMinis();
   const s = D.summary?.period;
