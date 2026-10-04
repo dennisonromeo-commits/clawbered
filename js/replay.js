@@ -56,11 +56,24 @@ export function fmtClock(s) {
   return `${m}:${String(Math.floor(sec)).padStart(2, "0")}`;
 }
 
+/** Shrink the eval label until it fits inside the bar (never clipped). */
+export function fitEvalLabel(el) {
+  el.style.fontSize = "";
+  const room = (el.parentElement?.clientWidth || el.clientWidth) - 1;
+  if (!room || !el.textContent) return;
+  const rg = document.createRange();
+  let fs = parseFloat(getComputedStyle(el).fontSize) || 9;
+  rg.selectNodeContents(el);
+  while (rg.getBoundingClientRect().width > room && fs > 5) { fs -= 0.5; el.style.fontSize = fs + "px"; }
+}
+
 /** Size of the advantage for the eval-bar label: "M" for mate (|cp| >= 1500), else pawns with no sign. */
 export function evalSize(cp) {
   if (cp == null) return "–";
   if (Math.abs(cp) >= 1500) return "M";
-  return (Math.abs(cp) / 100).toFixed(1);
+  const v = Math.abs(cp) / 100;
+  return v >= 9.95 ? String(Math.round(v)) : v.toFixed(1); // whole numbers from 10 up, one decimal below
+
 }
 
 export function fmtEval(cp) {
@@ -193,6 +206,7 @@ export class Replay {
     bar.classList.toggle("white-top", this.me === "black"); // White's (cream) end is at the top when he is Black
     const winner = wcp == null || wcp === 0 ? null : wcp > 0 ? "white" : "black";
     txt.textContent = this.evMe ? evalSize(wcp) : "";
+    fitEvalLabel(txt);
     const atBottom = winner ? winner === this.me : true;
     bar.classList.toggle("lbl-top", !atBottom);
     bar.classList.toggle("lbl-on-dark", winner === "black" || (!winner && this.me === "black"));

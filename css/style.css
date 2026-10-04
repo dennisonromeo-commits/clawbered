@@ -161,7 +161,7 @@ main,header,footer{position:relative;z-index:1}
 .evalbar{width:22px;flex:none;border:2px solid #000;border-radius:5px;background:#24262b;position:relative;overflow:hidden}
 .evalfill{position:absolute;left:0;right:0;bottom:0;height:50%;background:#f4f1ea;transition:height .35s cubic-bezier(.3,.8,.3,1)}
 .evalbar.white-top .evalfill{bottom:auto;top:0}
-.evaltxt{position:absolute;left:0;right:0;bottom:4px;font:700 9.5px var(--mono);text-align:center;color:#24262b;z-index:1}
+.evaltxt{position:absolute;left:0;right:0;bottom:4px;font:700 9px/1 var(--mono);letter-spacing:-.4px;text-align:center;white-space:nowrap;overflow:visible;color:#24262b;z-index:1}
 .evalbar.lbl-top .evaltxt{bottom:auto;top:4px}
 .evalbar.lbl-on-dark .evaltxt{color:#f4f1ea}
 .evalbar.na{opacity:.35}
