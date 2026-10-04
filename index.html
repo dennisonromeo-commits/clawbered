@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CLAWBERED · 2026 bullet chess highlights</title>
+<meta name="description" content="CLAWBERED: 2026 bullet chess highlights from Chess.com LobsterRomeo and Lichess QuiteQuickly. Flag wins, comebacks, upsets.">
+<meta name="theme-color" content="#0b0d12">
+<link rel="icon" href="img/lobster.svg" type="image/svg+xml">
+<link rel="stylesheet" href="vendor/chessground/chessground.base.css">
+<link rel="stylesheet" href="vendor/chessground/chessground.cburnett.css">
+<link rel="stylesheet" href="css/style.css">
+<script src="js/config.js"></script>
+</head>
+<body>
+<div class="grain" aria-hidden="true"></div>
+
+<header class="topbar">
+  <a class="brand" href="#top"><img src="img/lobster.svg" alt="" width="34" height="34"><span>CLAWBERED</span></a>
+  <nav class="nav" aria-label="Sections">
+    <a href="#stats">Stats</a><a href="#gotw">Picks</a><a href="#reel">Reel</a><a href="#chaos">Clock Chaos</a>
+    <a href="#openings">Openings</a><a href="#ratings">Ratings</a><a href="#heatmap">Heatmap</a><a href="#upsets">Upsets</a>
+  </nav>
+</header>
+
+<main id="top">
+
+<!-- 1. HERO -->
+<section class="hero" id="hero">
+  <div class="hero-copy">
+    <p class="kicker"><span class="dot"></span> 2026 bullet<span class="k-long"> chess</span> · <span class="k-long" data-bind="period"></span><span class="k-short" data-bind="period-short"></span></p>
+    <h1 class="logotype" aria-label="CLAWBERED"><span>CLAW</span><span>BERED</span></h1>
+    <p class="tagline">One-minute chess. Zero-second finishes. Every game here is a <em>win</em>.</p>
+    <div class="hero-accounts">
+      <a class="acct" id="acct-cc" target="_blank" rel="noopener"><b>Chess.com</b> LobsterRomeo <span class="rating" data-bind="cc-rating">–</span></a>
+      <a class="acct" id="acct-li" target="_blank" rel="noopener"><b>Lichess</b> QuiteQuickly <span class="rating" data-bind="li-rating">–</span></a>
+    </div>
+    <div class="tickets" id="hero-tickets"></div>
+  </div>
+  <div class="hero-art">
+    <img class="mascot" src="img/lobster.svg" alt="CLAWBERED lobster mascot in a fedora, holding a stopwatch and a captured king">
+    <span class="sticker s1">−3 AND STILL WON</span>
+    <span class="sticker s2">0.0s LEFT</span>
+    <span class="sticker s3">+560 UPSET</span>
+    <span class="sticker s4">PREMOVE<br>PRAYER</span>
+    <div class="hero-board-wrap">
+      <div class="hero-board" id="hero-board"></div>
+      <p class="hero-board-cap" id="hero-board-cap">Loading the #1 highlight…</p>
+    </div>
+  </div>
+</section>
+
+<div class="marquee" aria-hidden="true"><div class="marquee-track" id="marquee"></div></div>
+
+<!-- 2. STATS -->
+<section class="section" id="stats">
+  <header class="sec-head"><span class="sec-no">Nº 01</span><h2>The Numbers</h2><p class="sec-sub" data-bind="period-note"></p></header>
+  <div class="stat-grid" id="stat-big"></div>
+  <div class="dash">
+    <article class="panel" id="panel-formats"><h3>By site &amp; format</h3><div id="formats"></div></article>
+    <article class="panel" id="panel-winsby"><h3>How the wins land</h3><div id="winsby"></div></article>
+    <article class="panel" id="panel-peaks"><h3>Peak ratings, 2026</h3><div id="peaks"></div></article>
+  </div>
+</section>
+
+<!-- 3. GAMES OF THE WEEK / MONTH / YEAR -->
+<section class="section" id="gotw">
+  <header class="sec-head"><span class="sec-no">Nº 02</span><h2>Games of the Week · Month · Year</h2><p class="sec-sub" id="gotw-note"></p></header>
+  <div class="gotw" id="gotw-grid"></div>
+</section>
+
+<!-- 4. HIGHLIGHTS REEL + REPLAY BOARD -->
+<section class="section" id="reel">
+  <header class="sec-head"><span class="sec-no">Nº 03</span><h2>Highlights Reel</h2><p class="sec-sub" id="reel-method"></p></header>
+  <div class="theater" id="theater">
+    <div class="theater-board">
+      <div class="clock-plate top" id="clk-top"><span class="who"></span><span class="time">–</span></div>
+      <div class="board-row">
+        <div class="evalbar" id="evalbar" title="Engine eval, from his side"><div class="evalfill"></div><span class="evaltxt">–</span></div>
+        <div class="board" id="board"></div>
+      </div>
+      <div class="clock-plate bottom" id="clk-bot"><span class="who"></span><span class="time">–</span></div>
+      <div class="controls" role="group" aria-label="Replay controls">
+        <button data-act="start" title="Start (Home)" aria-label="Start">⏮</button>
+        <button data-act="prev" title="Back (←)" aria-label="Previous move">◀</button>
+        <button data-act="play" title="Play/pause (space)" aria-label="Play">▶</button>
+        <button data-act="next" title="Forward (→)" aria-label="Next move">▶▶</button>
+        <button data-act="end" title="End (End)" aria-label="End">⏭</button>
+        <button data-act="key" class="keybtn" title="Jump to the key moment (K)">★ Key moment</button>
+      </div>
+      <input type="range" id="scrub" min="0" max="0" value="0" aria-label="Scrub through the game">
+    </div>
+    <div class="theater-info">
+      <div class="ti-head">
+        <div class="ti-stickers" id="ti-stickers"></div>
+        <h3 id="ti-title">Pick a highlight</h3>
+        <p class="ti-meta" id="ti-meta"></p>
+      </div>
+      <p class="ti-caption" id="ti-caption"></p>
+      <div class="ti-move" id="ti-move"></div>
+      <div class="graphs">
+        <div class="graph"><span class="glabel">Eval (his side)</span><svg id="g-eval" viewBox="0 0 600 90" preserveAspectRatio="none"></svg></div>
+        <div class="graph"><span class="glabel">Clocks <i class="lg lg-me"></i>him <i class="lg lg-op"></i>opponent</span><svg id="g-clk" viewBox="0 0 600 90" preserveAspectRatio="none"></svg></div>
+      </div>
+      <ol class="movelist" id="movelist"></ol>
+      <p class="ti-src" id="ti-src"></p>
+    </div>
+  </div>
+  <div class="reel-filters" id="reel-filters"></div>
+  <div class="reel" id="reel-grid"></div>
+  <button class="btn reel-more" id="reel-more" hidden>Show all</button>
+</section>
+
+<!-- 5. CLOCK CHAOS -->
+<section class="section chaos" id="chaos">
+  <header class="sec-head"><span class="sec-no">Nº 04</span><h2>Clock-Chaos Wall of Fame</h2><p class="sec-sub" id="chaos-note"></p></header>
+  <div class="chaos-counts" id="chaos-counts"></div>
+  <h3 class="wall-h">The Zero-Second Club <small>lowest clock, still won</small></h3>
+  <div class="wall" id="wall-lowest"></div>
+  <h3 class="wall-h">The −3 Club <small>deepest material holes, still won</small></h3>
+  <div class="wall" id="wall-minus3"></div>
+</section>
+
+<!-- 6. OPENINGS -->
+<section class="section" id="openings">
+  <header class="sec-head"><span class="sec-no">Nº 05</span><h2>Best Openings</h2><p class="sec-sub" id="open-note"></p></header>
+  <div class="open-cols">
+    <div><h3 class="col-h"><span class="pc w">♔</span> With White</h3><div id="open-white" class="open-list"></div></div>
+    <div><h3 class="col-h"><span class="pc b">♚</span> With Black</h3><div id="open-black" class="open-list"></div></div>
+  </div>
+  <h3 class="col-h workh">The workhorses <small>most wins in 2026</small></h3>
+  <div class="workhorses" id="open-most"></div>
+</section>
+
+<!-- 7. RATINGS -->
+<section class="section" id="ratings">
+  <header class="sec-head"><span class="sec-no">Nº 06</span><h2>The Climb</h2><p class="sec-sub" id="rating-note"></p></header>
+  <div class="rating-hero" id="rating-hero"></div>
+  <div class="chips" id="rating-chips"></div>
+  <div class="chart-wrap"><svg id="rating-chart" viewBox="0 0 1000 440" role="img" aria-label="Chess.com bullet rating in 2026, with optional Chess.com blitz and Lichess lines"></svg><div class="chart-tip" id="rating-tip"></div></div>
+  <div class="climb-cards" id="climb-cards"></div>
+</section>
+
+<!-- 8. HEATMAP -->
+<section class="section" id="heatmap">
+  <header class="sec-head"><span class="sec-no">Nº 07</span><h2>When the Claws Come Out</h2><p class="sec-sub" id="heat-note"></p></header>
+  <div class="heat-best" id="heat-best"></div>
+  <div class="heat-scroll"><div class="heat" id="heat-grid"></div></div>
+  <p class="heat-detail" id="heat-detail">Tap or hover a cell.</p>
+</section>
+
+<!-- 9. UPSETS -->
+<section class="section" id="upsets">
+  <header class="sec-head"><span class="sec-no">Nº 08</span><h2>Top Upsets</h2><p class="sec-sub" id="upset-note"></p></header>
+  <div class="upsets" id="upset-list"></div>
+</section>
+
+<!-- Light & upbeat endgame bonus -->
+<section class="section grind" id="grind">
+  <header class="sec-head"><span class="sec-no">Bonus</span><h2>The Long-Game Club</h2><p class="sec-sub" id="grind-note"></p></header>
+  <div class="grind-list" id="grind-list"></div>
+</section>
+
+</main>
+
+<footer class="footer">
+  <img src="img/lobster.svg" alt="" width="64" height="64">
+  <div>
+    <p class="f-logo">CLAWBERED</p>
+    <p id="foot-scope"></p>
+    <p>Opponents are shown as “Opponent (rating)”. Evals are our own local Stockfish check where noted. Not affiliated with Chess.com or Lichess.</p>
+    <p class="f-links"><a id="f-cc" target="_blank" rel="noopener">Chess.com · LobsterRomeo</a> <a id="f-li" target="_blank" rel="noopener">Lichess · QuiteQuickly</a></p>
+    <p class="f-data" id="foot-data"></p>
+  </div>
+</footer>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

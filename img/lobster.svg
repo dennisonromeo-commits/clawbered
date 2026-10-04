@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 440" role="img" aria-label="CLAWBERED mascot: a lobster in a fedora, holding a stopwatch and a captured king">
+  <!-- Hand-made SVG for CLAWBERED v1. Noir lobster with fedora, stopwatch (left claw) and a clawbered king (right claw). -->
+  <defs>
+    <radialGradient id="lb-shell" cx="42%" cy="30%" r="75%">
+      <stop offset="0" stop-color="#ff7a5c"/><stop offset=".5" stop-color="#e8352b"/><stop offset="1" stop-color="#9c1418"/>
+    </radialGradient>
+    <linearGradient id="lb-hat" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2b2f3a"/><stop offset="1" stop-color="#11131a"/>
+    </linearGradient>
+    <pattern id="lb-dots" width="7" height="7" patternUnits="userSpaceOnUse">
+      <circle cx="3.5" cy="3.5" r="1.3" fill="#7a0f14" opacity=".45"/>
+    </pattern>
+  </defs>
+  <g stroke="#160b0b" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <!-- antennae -->
+    <path d="M188 128 C 150 70, 90 40, 30 30" fill="none" stroke-width="5"/>
+    <path d="M232 128 C 270 70, 330 40, 395 26" fill="none" stroke-width="5"/>
+    <!-- little legs -->
+    <path d="M160 250 L 118 268 L 104 300" fill="none" stroke-width="7"/>
+    <path d="M158 278 L 120 300 L 112 332" fill="none" stroke-width="7"/>
+    <path d="M260 250 L 302 268 L 316 300" fill="none" stroke-width="7"/>
+    <path d="M262 278 L 300 300 L 308 332" fill="none" stroke-width="7"/>
+    <!-- arms -->
+    <path d="M150 210 C 115 205, 100 190, 92 165" fill="none" stroke="#160b0b" stroke-width="24"/>
+    <path d="M150 210 C 115 205, 100 190, 92 165" fill="none" stroke="#d92e27" stroke-width="13"/>
+    <path d="M270 210 C 305 205, 320 190, 328 165" fill="none" stroke="#160b0b" stroke-width="24"/>
+    <path d="M270 210 C 305 205, 320 190, 328 165" fill="none" stroke="#d92e27" stroke-width="13"/>
+    <!-- tail -->
+    <path d="M168 318 Q 210 334 252 318 L 246 346 Q 210 360 174 346 Z" fill="url(#lb-shell)"/>
+    <path d="M176 346 Q 210 360 244 346 L 238 372 Q 210 384 182 372 Z" fill="url(#lb-shell)"/>
+    <path d="M184 372 Q 210 384 236 372 L 232 392 Q 210 400 188 392 Z" fill="url(#lb-shell)"/>
+    <path d="M210 392 L 160 428 Q 185 436 210 420 Q 235 436 260 428 Z" fill="url(#lb-shell)"/>
+    <!-- body -->
+    <ellipse cx="210" cy="240" rx="72" ry="90" fill="url(#lb-shell)"/>
+    <ellipse cx="210" cy="240" rx="72" ry="90" fill="url(#lb-dots)" stroke="none"/>
+    <path d="M160 270 Q 210 292 260 270" fill="none" stroke-width="4" opacity=".7"/>
+    <path d="M166 296 Q 210 316 254 296" fill="none" stroke-width="4" opacity=".7"/>
+    <!-- face -->
+    <circle cx="186" cy="196" r="17" fill="#fff8ec"/>
+    <circle cx="234" cy="196" r="17" fill="#fff8ec"/>
+    <circle cx="191" cy="199" r="7" fill="#160b0b" stroke="none"/>
+    <circle cx="239" cy="199" r="7" fill="#160b0b" stroke="none"/>
+    <circle cx="193.5" cy="196.5" r="2.2" fill="#fff" stroke="none"/>
+    <circle cx="241.5" cy="196.5" r="2.2" fill="#fff" stroke="none"/>
+    <!-- heavy noir eyelids -->
+    <path d="M168 192 Q 186 176 204 190" fill="#c42820" stroke-width="5"/>
+    <path d="M216 190 Q 234 176 252 192" fill="#c42820" stroke-width="5"/>
+    <!-- smirk -->
+    <path d="M188 238 Q 214 256 238 232" fill="none" stroke-width="6"/>
+    <path d="M232 236 L 228 246 L 238 240" fill="#fff8ec" stroke-width="3"/>
+    <!-- fedora -->
+    <path d="M132 166 Q 210 136 288 166 Q 300 172 286 176 Q 210 160 134 176 Q 120 172 132 166 Z" fill="url(#lb-hat)"/>
+    <path d="M160 160 Q 156 112 182 104 Q 210 116 238 104 Q 264 112 260 160 Q 210 148 160 160 Z" fill="url(#lb-hat)"/>
+    <path d="M161 150 Q 210 138 259 150 L 260 160 Q 210 148 160 160 Z" fill="#e8352b" stroke-width="4"/>
+    <!-- left claw: stopwatch -->
+    <g transform="translate(78 120) rotate(-18)">
+      <path d="M0 50 C -38 40, -44 -10, -14 -40 C 2 -54, 26 -50, 30 -36 L 8 -14 C 24 -8, 40 -14, 48 -26 C 58 6, 40 52, 0 50 Z" fill="url(#lb-shell)"/>
+    </g>
+    <g transform="translate(100 84) scale(.85)">
+      <rect x="-7" y="-36" width="14" height="10" rx="2" fill="#ffd23f"/>
+      <circle r="28" fill="#fff8ec"/>
+      <circle r="28" fill="none" stroke="#ffd23f" stroke-width="5"/>
+      <path d="M0 0 L 0 -18" stroke-width="4"/>
+      <path d="M0 0 L 13 6" stroke="#e8352b" stroke-width="4"/>
+      <text x="0" y="17" text-anchor="middle" font-family="Space Mono, monospace" font-weight="700" font-size="11" fill="#160b0b" stroke="none">0:02</text>
+    </g>
+    <!-- right claw: clawbered king -->
+    <g transform="translate(342 118) scale(-1 1) rotate(-18)">
+      <path d="M0 50 C -38 40, -44 -10, -14 -40 C 2 -54, 26 -50, 30 -36 L 8 -14 C 24 -8, 40 -14, 48 -26 C 58 6, 40 52, 0 50 Z" fill="url(#lb-shell)"/>
+    </g>
+    <g transform="translate(322 92) rotate(22) scale(.9)">
+      <path d="M-4 -44 h8 v8 h8 v8 h-8 v6 h-8 v-6 h-8 v-8 h8 z" fill="#fff8ec" stroke-width="4"/>
+      <path d="M-16 -18 Q 0 -26 16 -18 L 12 10 L -12 10 Z" fill="#fff8ec" stroke-width="4"/>
+      <rect x="-18" y="10" width="36" height="10" rx="3" fill="#fff8ec" stroke-width="4"/>
+      <path d="M-8 -6 l5 5 m0 -5 l-5 5 M3 -6 l5 5 m0 -5 l-5 5" stroke-width="2.5"/>
+    </g>
+  </g>
+</svg>
