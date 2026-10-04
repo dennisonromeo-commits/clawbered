@@ -156,12 +156,14 @@ main,header,footer{position:relative;z-index:1}
 .theater{display:grid;grid-template-columns:minmax(300px,560px) 1fr;gap:28px;background:linear-gradient(160deg,#1a1e2a,#10131a);border:3px solid #000;border-radius:20px;padding:22px;box-shadow:10px 10px 0 #000;margin-bottom:28px;position:relative}
 .theater::before{content:"NOW SHOWING";position:absolute;top:-16px;left:24px;font:17px/1 var(--display);background:var(--red);color:#fff;padding:6px 12px;border:3px solid #000;transform:rotate(-2deg);letter-spacing:.06em}
 .board-row{display:flex;gap:8px}
-.board{flex:1;aspect-ratio:1;border:3px solid #000;border-radius:6px;overflow:hidden;box-shadow:4px 4px 0 #000}
+.board{flex:1;aspect-ratio:1;border:0;background:#000;outline:3px solid #000;border-radius:2px;overflow:hidden;box-shadow:4px 4px 0 3px #000}
 .board .cg-wrap,.hero-board .cg-wrap{width:100%;height:100%}
-.evalbar{width:22px;flex:none;border:2px solid #000;border-radius:5px;background:#2b2f3a;position:relative;overflow:hidden}
-.evalfill{position:absolute;left:0;right:0;bottom:0;height:50%;background:var(--paper);transition:height .35s cubic-bezier(.3,.8,.3,1)}
-.evaltxt{position:absolute;left:0;right:0;font:700 9.5px var(--mono);text-align:center;color:#000;bottom:4px;z-index:1;writing-mode:horizontal-tb}
-.evalbar.neg .evaltxt{bottom:auto;top:4px;color:var(--paper)}
+.evalbar{width:22px;flex:none;border:2px solid #000;border-radius:5px;background:#24262b;position:relative;overflow:hidden}
+.evalfill{position:absolute;left:0;right:0;bottom:0;height:50%;background:#f4f1ea;transition:height .35s cubic-bezier(.3,.8,.3,1)}
+.evalbar.white-top .evalfill{bottom:auto;top:0}
+.evaltxt{position:absolute;left:0;right:0;bottom:4px;font:700 9.5px var(--mono);text-align:center;color:#24262b;z-index:1}
+.evalbar.lbl-top .evaltxt{bottom:auto;top:4px}
+.evalbar.lbl-on-dark .evaltxt{color:#f4f1ea}
 .evalbar.na{opacity:.35}
 .clock-plate{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 10px 7px 38px;margin:6px 0;background:#0c0e13;border:2px solid #000;border-radius:8px}
 .clock-plate .who{font:600 14px var(--body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -385,11 +387,28 @@ cg-board square.check{background:radial-gradient(ellipse at center,rgba(255,0,0,
 .vault-card{background:#e9dcc0;color:#1a1210;border:3px solid #000;border-radius:6px;padding:22px 22px 18px;box-shadow:8px 8px 0 #000;transform:rotate(-.6deg);
   background-image:radial-gradient(rgba(0,0,0,.07) 1px,transparent 1.2px),linear-gradient(transparent 31px,rgba(0,0,0,.05) 32px);background-size:4px 4px,100% 32px}
 .vault-card:hover{box-shadow:10px 10px 0 var(--deep)}
-.vault-card h4{font-size:34px;color:#1a1210}
+.vault-card h4{font-size:34px;color:#1a1210;padding-right:250px}
+.vault-card .btn .mv{text-transform:none}
 .vault-card .meta{color:#4a3c30}
 .vault-card .cap{font-size:16px}
 .vault-stamp{position:absolute;top:14px;right:16px;font:22px/1 var(--display);letter-spacing:.08em;color:var(--deep);border:4px double var(--deep);padding:7px 12px 5px;transform:rotate(7deg);opacity:.85;background:rgba(233,220,192,.6)}
 .vault-body{display:flex;gap:18px;align-items:flex-start}
 .vault-body .mini{width:150px}
 .vault-chips{margin-top:8px}
-@media (max-width:600px){.vault-body{flex-direction:column}.vault-body .mini{width:100%;max-width:260px}.vault-stamp{position:static;display:inline-block;align-self:flex-start;font-size:17px;margin-bottom:6px}.vault-card h4{font-size:28px}}
+@media (max-width:600px){.vault-body{flex-direction:column}.vault-body .mini{width:100%;max-width:260px}.vault-stamp{position:static;display:inline-block;align-self:flex-start;font-size:17px;margin-bottom:6px}.vault-card h4{font-size:28px;padding-right:0}}
+
+/* coordinates inside the squares so nothing is clipped at any width */
+#board coords{font:700 10px var(--mono);opacity:1}
+#board coords.ranks{left:auto;right:1px;top:0;height:100%;width:auto;flex-flow:column-reverse}
+#board coords.ranks.black{flex-flow:column}
+#board coords.ranks coord{transform:none;display:flex;align-items:flex-start;justify-content:flex-end;padding-top:1px;line-height:1}
+#board coords.files{left:0;bottom:1px;width:100%;height:auto;text-transform:none}
+#board coords.files coord{text-align:left;padding-left:2px;line-height:1}
+.board{min-width:0}
+.board-row{width:100%;max-width:100%}
+.theater-board{min-width:0}
+
+/* coordinate colours contrast with the square they sit on, in both orientations */
+#board coords coord{color:#8f3a2f}
+#board coords.files:not(.black) coord:nth-child(odd),#board coords.files.black coord:nth-child(even),
+#board coords.ranks:not(.black) coord:nth-child(even),#board coords.ranks.black coord:nth-child(odd){color:#e6d6b4}

@@ -465,7 +465,7 @@ function renderVault(D) {
         <div class="vault-chips">${(g.stickers || []).map((s) => `<span class="chip${/BRILLIANT/.test(s) ? " bril" : ""}">${esc(s)}</span>`).join("")}</div>
       </div></div>
       <p class="cap">${esc(g.caption || "")}</p>
-      <div class="row"><span class="meta">${g.excluded_from_stats ? "Archive piece · not in 2026 stats" : ""}</span><button class="btn" data-play="${esc(g.uid)}">▶ Replay${km ? " · " + esc(km) : ""}</button></div>
+      <div class="row"><span class="meta">${g.excluded_from_stats ? "Archive piece · not in 2026 stats" : ""}</span><button class="btn" data-play="${esc(g.uid)}">▶ Replay${km ? ` · <span class="mv">${esc(km)}</span>` : ""}</button></div>
     </article>`;
   }).join("");
   hydrateMinis($("vault-list"));

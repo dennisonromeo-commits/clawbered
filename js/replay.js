@@ -56,9 +56,16 @@ export function fmtClock(s) {
   return `${m}:${String(Math.floor(sec)).padStart(2, "0")}`;
 }
 
+/** Size of the advantage for the eval-bar label: "M" for mate (|cp| >= 1500), else pawns with no sign. */
+export function evalSize(cp) {
+  if (cp == null) return "–";
+  if (Math.abs(cp) >= 1500) return "M";
+  return (Math.abs(cp) / 100).toFixed(1);
+}
+
 export function fmtEval(cp) {
   if (cp == null) return "–";
-  if (Math.abs(cp) >= 1500) return cp > 0 ? "+15+" : "−15+";
+  if (Math.abs(cp) >= 1500) return cp > 0 ? "+M" : "−M";
   const v = (cp / 100).toFixed(1);
   return cp > 0 ? `+${v}` : cp < 0 ? `−${v.slice(1)}` : "0.0";
 }
@@ -175,17 +182,26 @@ export class Replay {
       el.classList.toggle("active", p < n && s.turn === side);
       el.classList.toggle("low", t != null && t <= 5);
     }
-    // eval
+    // eval bar, Chess.com convention: cream = White's share, dark = Black's share.
+    // His colour sits at the bottom (same as the board), and the label (size only, no White-POV sign) sits at the winning side's end.
     const bar = this.$("evalbar");
     let cp = this.evMe ? (p === 0 ? 20 * (this.me === "white" ? 1 : -1) : this.evMe[p]) : null;
-    const pct = cp == null ? 50 : 50 + 50 * (2 / (1 + Math.exp(-0.00368 * cp)) - 1);
-    bar.querySelector(".evalfill").style.height = pct + "%";
-    bar.querySelector(".evaltxt").textContent = this.evMe ? fmtEval(cp) : "";
-    bar.classList.toggle("neg", cp != null && cp < 0);
+    const wcp = cp == null ? null : this.me === "white" ? cp : -cp; // White's POV
+    const whitePct = wcp == null ? 50 : 50 + 50 * (2 / (1 + Math.exp(-0.00368 * wcp)) - 1);
+    const fill = bar.querySelector(".evalfill"), txt = bar.querySelector(".evaltxt");
+    fill.style.height = whitePct + "%";
+    bar.classList.toggle("white-top", this.me === "black"); // White's (cream) end is at the top when he is Black
+    const winner = wcp == null || wcp === 0 ? null : wcp > 0 ? "white" : "black";
+    txt.textContent = this.evMe ? evalSize(wcp) : "";
+    const atBottom = winner ? winner === this.me : true;
+    bar.classList.toggle("lbl-top", !atBottom);
+    bar.classList.toggle("lbl-on-dark", winner === "black" || (!winner && this.me === "black"));
+    bar.dataset.winner = winner || "even";
+    bar.title = wcp == null ? "Engine eval" : `Engine eval: ${winner ? (winner === this.me ? "he" : "opponent") + " is better by " + evalSize(wcp) : "level"}`;
     // move label
     const mv = s.san ? `${Math.ceil(p / 2)}${p % 2 ? "." : "..."} ${s.san}` : "Start position";
     const star = (p === this.keyPos ? "  ★ KEY MOMENT" : "") + (this.brilPlies.has(p - 1) ? "  !! BRILLIANT" : "");
-    const evs = this.evMe && p > 0 ? `  ·  eval ${fmtEval(cp)} for him` : "";
+    const evs = this.evMe && p > 0 ? (Math.abs(cp) >= 1500 ? `  ·  ${cp > 0 ? "forced mate for him" : "engine sees mate against him"}` : `  ·  eval ${fmtEval(cp)} for him`) : "";
     this.$("ti-move").textContent = `${mv}${star}${evs}`;
     // move list
     this.$("movelist").querySelectorAll("button.cur").forEach((b) => b.classList.remove("cur"));
