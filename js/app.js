@@ -3,7 +3,7 @@ import { Replay, buildPositions, miniBoard, HANDLES, baseSeconds, brilliantRaw, 
 import { Chess } from "../vendor/chessjs/chess.js";
 
 const CFG = window.CLAWBERED_CONFIG || { dataPaths: ["data/"] };
-const FILES = ["summary", "highlights", "games_of_period", "clock_chaos", "openings", "rating_timeline", "heatmap", "upsets", "endgame", "vault", "brilliant_moves"];
+const FILES = ["summary", "highlights", "games_of_period", "clock_chaos", "openings", "rating_timeline", "heatmap", "upsets", "endgame", "vault", "brilliant_moves", "rosen_score"];
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const nf = (n) => Number(n).toLocaleString("en-US");
@@ -539,6 +539,51 @@ function renderBrilliant(D) {
   }
 }
 
+// ---------- Rosen Score (data/rosen_score.json) — all-time Chess.com numbers, kept out of every 2026 stat ----------
+const RS_SHOW = 6;
+const RS_WHY = {
+  "Stalemate Tricks": "Lost position? Stalemate. Half a point out of thin air.",
+  "Flag Opponent Who Had Mate in 1": "They had mate in one. The clock had other plans.",
+  "Clutch Pawn": "One little pawn left on the board, and it made the flag count.",
+  "Connect 5": "Five pawns holding hands in a row.",
+  "Oh No My Queen": "The signature Rosen queen \u2018blunder\u2019 that was a trap all along.",
+  "Checkmate with a Pawn": "The humblest piece delivers the final blow.",
+  "Checkmate with 0.1 seconds": "Mate with a tenth of a second on the clock.",
+  "Pawn Diamond": "Four pawns in a perfect diamond.",
+  "Smothered Mate": "The king boxed in by his own army, then a knight.",
+  "Checkmate with King": "The king walks up and finishes it himself.",
+  "g5#": "Mate on g5. Exactly as silly as it sounds.",
+  "Double-Check Checkmate": "Two checks at once, no way out.",
+  "Promote a Pawn within 8 Moves": "From pawn to queen before move 8.",
+  "Pawn X": "Five pawns drawn into an X.",
+  "Pawn Cube": "A tidy 2\u00d72 block of pawns.",
+  "Royal Family Fork": "One knight hitting king and queen (and more) at once.",
+};
+function renderRosen(D) {
+  const R = D.rosen_score, sec = $("rosen");
+  const feats = Object.entries(R?.accomplishments || {}).filter(([k, v]) => k && Number(v) > 0).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  if (!R || !feats.length) { sec.style.display = "none"; return; }
+  const total = Number(R.total_trophies) || feats.reduce((a, [, v]) => a + Number(v), 0);
+  const done = Number(R.goals_completed) || feats.length, all = Number(R.goals_total) || 63;
+  $("rs-num").textContent = nf(total);
+  $("rs-goals-txt").textContent = `${done} / ${all} goals`;
+  $("rs-fill").style.width = `${Math.min(100, (100 * done) / all)}%`;
+  const asOf = /^\d{4}-\d\d-\d\d$/.test(R.as_of || "") ? fmtDate(R.as_of) : "";
+  $("rs-cap").innerHTML = `per <a href="https://rosenscore.com" target="_blank" rel="noopener">rosenscore.com</a>${R.games_analyzed ? `, ${nf(R.games_analyzed)} Chess.com games` : ""}${asOf ? `, ${esc(asOf)}` : ""}`;
+  $("rs-grid").innerHTML = feats.map(([k, v], i) => `<div class="rs-card${i < 3 ? " rs-top" : ""}${i >= RS_SHOW ? " rs-extra" : ""}"${i >= RS_SHOW ? " hidden" : ""}>
+      ${i < 3 ? `<span class="rs-rank">#${i + 1}</span>` : ""}<div class="rs-n">${nf(v)}<small>×</small></div>
+      <div><div class="rs-k">${esc(k)}</div>${RS_WHY[k] ? `<div class="rs-w">${esc(RS_WHY[k])}</div>` : ""}</div></div>`).join("");
+  const more = $("rs-more"), extra = feats.length - RS_SHOW;
+  if (extra > 0) {
+    more.hidden = false; more.textContent = `All feats (+${extra})`;
+    more.onclick = () => {
+      const open = more.dataset.open !== "1";
+      $("rs-grid").querySelectorAll(".rs-extra").forEach((el) => { el.hidden = !open; });
+      more.dataset.open = open ? "1" : "0"; more.textContent = open ? "Show fewer" : `All feats (+${extra})`;
+    };
+  }
+}
+
 function registerAll(D) {
   // highlights first (richest: title, stickers, evals)
   for (const h of D.highlights?.items || []) register(h);
@@ -575,7 +620,7 @@ async function main() {
   catch (e) { console.error(e); $("hero-tickets").innerHTML = `<div class="ticket"><div class="l">Data not found</div><div class="s">${esc(e.message)}</div></div>`; return; }
   window.CLAWBERED_DATA = D;
   registerAll(D);
-  const steps = [renderHero, renderBrilliant, renderStats, renderReel, renderGOTW, renderChaos, renderOpenings, renderRatings, renderHeat, renderUpsets, renderGrind, renderVault, heroBoard];
+  const steps = [renderHero, renderBrilliant, renderRosen, renderStats, renderReel, renderGOTW, renderChaos, renderOpenings, renderRatings, renderHeat, renderUpsets, renderGrind, renderVault, heroBoard];
   for (const f of steps) { try { f(D); } catch (e) { console.error(`[CLAWBERED] ${f.name} failed`, e); } }
   hydrateMinis();
   const s = D.summary?.period;
