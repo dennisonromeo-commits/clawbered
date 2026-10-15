@@ -579,11 +579,7 @@ function drawRsBoard(el, ex) {
   if (!ex || el.dataset.drawn) return;
   const missed = ex.feat === RS_MISSED;
   let from, to, after = null;
-  try { const c = new Chess(ex.fen); const m = c.move(ex.key_move_san); from = m.from; to = m.to; after = c.fen(); }
-  catch { // the fen may already be the position after the key move: mark its destination square only
-    const sq = String(ex.key_move_san || "").replace(/=[QRBN]|[+#!?]/g, "").match(/([a-h][1-8])$/);
-    if (sq) to = sq[1];
-  }
+  try { const c = new Chess(ex.fen); const m = c.move(ex.key_move_san); from = m.from; to = m.to; after = c.fen(); } catch { /* show the position only */ }
   // a missed mate never happened: show the position before it, with the move marked in red; otherwise show the result of the move in teal
   const fen = missed || !after ? ex.fen : after;
   const cg = miniBoard(el, fen, ex.my_color === "black" ? "black" : "white");
