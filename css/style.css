@@ -487,3 +487,19 @@ cg-board square.check{background:radial-gradient(ellipse at center,rgba(255,0,0,
 .hero-compact .s2{top:auto;bottom:10%;right:-4%}
 @media (max-width:900px){.hero-compact{grid-template-columns:1fr 150px;padding:22px 16px 18px;gap:10px;align-items:end}.hero-compact .sticker{display:none}.hero-compact .mascot{width:150px}}
 @media (max-width:600px){.hero-compact{grid-template-columns:1fr;position:relative}.hero-compact .logotype{font-size:21vw}.hero-compact .hero-art{position:absolute;top:44px;right:10px;width:118px}.hero-compact .mascot{width:118px}.hero-compact .hero-accounts{gap:6px}}
+main > section{scroll-margin-top:0} /* offset comes from html scroll-padding-top, set to the live nav height by initAnchors() */
+
+/* Rosen feat boards */
+.rs-grid{grid-auto-rows:1fr;align-items:stretch}
+.rs-card{flex-direction:column;align-items:stretch;height:100%;box-sizing:border-box}
+.rs-head{display:flex;gap:14px;align-items:center}
+.rs-ex{display:flex;gap:12px;align-items:flex-start;border-top:2px dashed var(--line);padding-top:10px;margin-top:2px}
+.rs-board{width:112px}
+.rs-exbody{min-width:0;flex:1}
+.rs-mv{font:26px/1 var(--display);color:var(--paper);margin-bottom:5px}
+.rs-missed{color:var(--red)}
+.rs-cap2{font-size:12.5px;line-height:1.38;margin:0;color:var(--ink)}
+.rs-ex .bm-meta{margin-top:6px;min-height:0}
+.bm-board square.rs-miss-to{background:rgba(255,59,47,.75)}
+.bm-board square.rs-miss-from{background:rgba(255,59,47,.32)}
+@media (max-width:600px){.rs-board{width:96px}.rs-mv{font-size:22px}}

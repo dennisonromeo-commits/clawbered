@@ -3,7 +3,7 @@ import { Replay, buildPositions, miniBoard, HANDLES, baseSeconds, brilliantRaw, 
 import { Chess } from "../vendor/chessjs/chess.js";
 
 const CFG = window.CLAWBERED_CONFIG || { dataPaths: ["data/"] };
-const FILES = ["summary", "highlights", "games_of_period", "clock_chaos", "openings", "rating_timeline", "heatmap", "upsets", "endgame", "vault", "brilliant_moves", "rosen_score"];
+const FILES = ["summary", "highlights", "games_of_period", "clock_chaos", "openings", "rating_timeline", "heatmap", "upsets", "endgame", "vault", "brilliant_moves", "rosen_score", "rosen_examples"];
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const nf = (n) => Number(n).toLocaleString("en-US");
@@ -559,6 +559,40 @@ const RS_WHY = {
   "Pawn Cube": "A tidy 2\u00d72 block of pawns.",
   "Royal Family Fork": "One knight hitting king and queen (and more) at once.",
 };
+
+const RS_MISSED = "Flag Opponent Who Had Mate in 1"; // key_move_san is the opponent's missed mate
+const RS_RES = { win: "won", loss: "lost", draw: "draw", W: "won", L: "lost", D: "draw" };
+function rsExample(ex, feat) {
+  const missed = feat === RS_MISSED;
+  const opp = `Opponent (${Number.isFinite(Number(ex.opponent_rating)) ? Number(ex.opponent_rating) : "?"})`;
+  const res = RS_RES[ex.result] || "";
+  const d = /^\d{4}-\d\d-\d\d$/.test(ex.date || "") ? fmtDate(ex.date) : "";
+  const mv = ex.key_move_san ? (missed ? `<span class="rs-missed">Missed: ${esc(ex.key_move_san)}</span>` : esc(ex.key_move_san)) : "";
+  return `<div class="rs-ex">
+      <div class="bm-board rs-board" data-rs-board="${esc(feat)}"></div>
+      <div class="rs-exbody">${mv ? `<div class="rs-mv">${mv}</div>` : ""}
+        ${typeof ex.caption === "string" && ex.caption ? `<p class="rs-cap2">${esc(ex.caption)}</p>` : ""}
+        <div class="bm-meta"><b>${esc(opp)}</b>${res ? ` · <span class="bm-res-n">${esc(res)}</span>` : ""}${d || ex.time_class ? "<br>" : ""}${esc(d)}${d && ex.time_class ? " · " : ""}${esc(ex.time_class || "")}</div>
+      </div></div>`;
+}
+function drawRsBoard(el, ex) {
+  if (!ex || el.dataset.drawn) return;
+  const missed = ex.feat === RS_MISSED;
+  let from, to, after = null;
+  try { const c = new Chess(ex.fen); const m = c.move(ex.key_move_san); from = m.from; to = m.to; after = c.fen(); }
+  catch { // the fen may already be the position after the key move: mark its destination square only
+    const sq = String(ex.key_move_san || "").replace(/=[QRBN]|[+#!?]/g, "").match(/([a-h][1-8])$/);
+    if (sq) to = sq[1];
+  }
+  // a missed mate never happened: show the position before it, with the move marked in red; otherwise show the result of the move in teal
+  const fen = missed || !after ? ex.fen : after;
+  const cg = miniBoard(el, fen, ex.my_color === "black" ? "black" : "white");
+  const hl = new Map();
+  if (from) hl.set(from, missed ? "rs-miss-from" : "bm-from");
+  if (to) hl.set(to, missed ? "rs-miss-to" : "bm-to");
+  if (hl.size) cg.set({ highlight: { lastMove: false, custom: hl } });
+  el.dataset.drawn = "1";
+}
 function renderRosen(D) {
   const R = D.rosen_score, sec = $("rosen");
   const feats = Object.entries(R?.accomplishments || {}).filter(([k, v]) => k && Number(v) > 0).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
@@ -570,9 +604,19 @@ function renderRosen(D) {
   $("rs-fill").style.width = `${Math.min(100, (100 * done) / all)}%`;
   const asOf = /^\d{4}-\d\d-\d\d$/.test(R.as_of || "") ? fmtDate(R.as_of) : "";
   $("rs-cap").innerHTML = `per <a href="https://rosenscore.com" target="_blank" rel="noopener">rosenscore.com</a>${R.games_analyzed ? `, ${nf(R.games_analyzed)} Chess.com games` : ""}${asOf ? `, ${esc(asOf)}` : ""}`;
-  $("rs-grid").innerHTML = feats.map(([k, v], i) => `<div class="rs-card${i < 3 ? " rs-top" : ""}${i >= RS_SHOW ? " rs-extra" : ""}"${i >= RS_SHOW ? " hidden" : ""}>
-      ${i < 3 ? `<span class="rs-rank">#${i + 1}</span>` : ""}<div class="rs-n">${nf(v)}<small>×</small></div>
-      <div><div class="rs-k">${esc(k)}</div>${RS_WHY[k] ? `<div class="rs-w">${esc(RS_WHY[k])}</div>` : ""}</div></div>`).join("");
+  // one example game per feat (data/rosen_examples.json, or rosen_score.examples); never reads opponent names
+  const EX = new Map((Array.isArray(D.rosen_examples) ? D.rosen_examples : D.rosen_examples?.items || R.examples || [])
+    .filter((x) => x && x.feat && x.fen).map((x) => [x.feat, x]));
+  $("rs-grid").innerHTML = feats.map(([k, v], i) => {
+    const ex = EX.get(k);
+    return `<div class="rs-card${i < 3 ? " rs-top" : ""}${i >= RS_SHOW ? " rs-extra" : ""}"${i >= RS_SHOW ? " hidden" : ""}>
+      ${i < 3 ? `<span class="rs-rank">#${i + 1}</span>` : ""}
+      <div class="rs-head"><div class="rs-n">${nf(v)}<small>×</small></div>
+      <div><div class="rs-k">${esc(k)}</div>${RS_WHY[k] ? `<div class="rs-w">${esc(RS_WHY[k])}</div>` : ""}</div></div>
+      ${ex ? rsExample(ex, k) : ""}</div>`;
+  }).join("");
+  const drawRs = () => $("rs-grid").querySelectorAll(".rs-card:not([hidden]) [data-rs-board]").forEach((el) => drawRsBoard(el, EX.get(el.dataset.rsBoard)));
+  drawRs();
   const more = $("rs-more"), extra = feats.length - RS_SHOW;
   if (extra > 0) {
     more.hidden = false; more.textContent = `All feats (+${extra})`;
@@ -580,8 +624,63 @@ function renderRosen(D) {
       const open = more.dataset.open !== "1";
       $("rs-grid").querySelectorAll(".rs-extra").forEach((el) => { el.hidden = !open; });
       more.dataset.open = open ? "1" : "0"; more.textContent = open ? "Show fewer" : `All feats (+${extra})`;
+      if (open) requestAnimationFrame(drawRs);
     };
   }
+}
+
+// ---------- anchor landing: deep links (#rosen, #vault…) and nav clicks land on the section heading ----------
+// Sections fill in after load (data, fonts, boards), so the first jump lands short. For a short window we
+// re-align to the target whenever the layout resizes, and stop immediately if the user scrolls themselves.
+const ANCHOR_HOLD_MS = 2500;
+let anchorHold = null;
+function navOffset() {
+  const bar = document.querySelector(".topbar");
+  const h = (bar ? bar.getBoundingClientRect().height : 60) + 8;
+  document.documentElement.style.scrollPaddingTop = `${Math.round(h)}px`;
+  return h;
+}
+function stopAnchorHold() { if (anchorHold) { anchorHold.stop(); anchorHold = null; } }
+function holdAnchor(id, { smooth = false } = {}) {
+  stopAnchorHold();
+  const el = id && document.getElementById(id);
+  if (!el) return;
+  let alive = true, ro = null, timer = null, settleT = null, smoothing = smooth;
+  const userEv = ["wheel", "touchstart", "keydown", "mousedown"];
+  const stop = () => { alive = false; ro?.disconnect(); clearTimeout(timer); clearTimeout(settleT); userEv.forEach((e) => removeEventListener(e, onUser, true)); };
+  const onUser = (e) => { if (e.type === "keydown" && !/^(Arrow|Page|Home|End| )/.test(e.key)) return; stopAnchorHold(); };
+  const align = () => {
+    if (!alive || smoothing) return;
+    const off = el.getBoundingClientRect().top - navOffset();
+    if (Math.abs(off) > 1) window.scrollTo({ top: window.scrollY + off, behavior: "instant" });
+  };
+  anchorHold = { stop };
+  userEv.forEach((e) => addEventListener(e, onUser, { capture: true, passive: true }));
+  if (smooth) {
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+    const done = () => { smoothing = false; align(); };
+    addEventListener("scrollend", done, { once: true });
+    settleT = setTimeout(done, 1200); // browsers without scrollend
+  } else align();
+  if ("ResizeObserver" in window) { ro = new ResizeObserver(align); ro.observe(document.body); }
+  document.fonts?.ready.then(align);
+  timer = setTimeout(stopAnchorHold, ANCHOR_HOLD_MS + (smooth ? 1200 : 0));
+}
+function initAnchors() {
+  navOffset();
+  addEventListener("resize", navOffset, { passive: true });
+  document.addEventListener("click", (e) => {
+    const a = e.target.closest?.('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    const id = decodeURIComponent(a.getAttribute("href").slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    if (location.hash !== "#" + id) history.pushState(null, "", "#" + id);
+    holdAnchor(id, { smooth: true });
+  });
+  addEventListener("popstate", () => holdAnchor(decodeURIComponent(location.hash.slice(1))));
+  addEventListener("load", () => { if (anchorHold) holdAnchor(decodeURIComponent(location.hash.slice(1))); });
+  if (location.hash.length > 1) holdAnchor(decodeURIComponent(location.hash.slice(1)));
 }
 
 function registerAll(D) {
@@ -628,6 +727,7 @@ async function main() {
   const sample = Object.values(D).some((v) => v && typeof v === "object" && v.SAMPLE);
   $("foot-data").textContent = `Data: ${D._base}${sample ? " (SAMPLE DATA)" : ""} · last games: Chess.com ${s?.last_game?.chesscom || "?"}, Lichess ${s?.last_game?.lichess || "?"}`;
   document.documentElement.dataset.ready = "1";
+  initAnchors();
 }
 main();
 
