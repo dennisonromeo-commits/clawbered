@@ -412,3 +412,40 @@ cg-board square.check{background:radial-gradient(ellipse at center,rgba(255,0,0,
 #board coords coord{color:#8f3a2f}
 #board coords.files:not(.black) coord:nth-child(odd),#board coords.files.black coord:nth-child(even),
 #board coords.ranks:not(.black) coord:nth-child(even),#board coords.ranks.black coord:nth-child(odd){color:#e6d6b4}
+
+/* NEW PEAK stamp (blitz) — small red Deco stamp, same family as the vault stamp */
+.peak .p{position:relative;display:inline-flex;align-items:center;gap:10px}
+.peak-stamp{font:12px/1 var(--display);letter-spacing:.1em;color:var(--red);border:3px double var(--red);padding:4px 6px 3px;transform:rotate(-6deg);opacity:.92;white-space:nowrap}
+
+/* Brilliant Moves showcase */
+.bm-head{display:flex;align-items:flex-end;gap:34px;flex-wrap:wrap;margin-bottom:26px}
+.bm-head .sec-head{margin-bottom:0;flex:1;min-width:260px}
+.bm-count{text-align:center;padding:14px 22px 12px;border:3px solid #000;border-radius:6px;background:var(--panel);box-shadow:8px 8px 0 var(--deep);position:relative}
+.bm-count::before,.bm-count::after{content:"";position:absolute;left:8px;right:8px;height:2px;background:repeating-linear-gradient(90deg,var(--yel) 0 6px,transparent 6px 12px)}
+.bm-count::before{top:6px}.bm-count::after{bottom:6px}
+.bm-num{font:clamp(96px,13vw,168px)/.86 var(--display);color:var(--teal);letter-spacing:.02em;transform:scaleY(1.18);transform-origin:bottom;margin-top:16px;text-shadow:5px 5px 0 #000,7px 7px 0 var(--deep)}
+.bm-word{font:clamp(15px,1.8vw,20px)/1 var(--display);letter-spacing:.42em;margin:14px -.42em 0 0;color:var(--paper)}
+.bm-cap{font:11px/1 var(--mono);color:var(--mute);margin-top:7px}
+.bm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:20px}
+.bm-card{position:relative;display:flex;gap:16px;align-items:flex-start;background:var(--bg2);border:3px solid #000;border-radius:8px;padding:16px;box-shadow:6px 6px 0 #000;outline:2px solid var(--line);outline-offset:-5px}
+.bm-card[hidden]{display:none}
+.bm-board{width:132px;aspect-ratio:1;flex:none;border:2px solid #000;border-radius:4px;overflow:hidden}
+.bm-board cg-container{max-width:100%}
+.bm-board square.bm-to{background:rgba(63,208,201,.78)}
+.bm-board square.bm-from{background:rgba(63,208,201,.32)}
+.bm-body{min-width:0;flex:1}
+.bm-move{font:38px/1 var(--display);color:var(--paper);letter-spacing:.01em;margin-bottom:8px;text-transform:none}
+.bm-bang{color:var(--teal);margin-left:2px}
+.bm-meta{font-size:12.5px;color:var(--mute);margin-top:9px;line-height:1.45}
+.bm-meta b{color:var(--paper);font-weight:700}
+.bm-why{font-size:13.5px;line-height:1.4;margin:9px 0 0;color:var(--ink);border-left:3px solid var(--teal);padding-left:9px}
+.bm-year{position:absolute;top:-11px;right:14px;font:13px/1 var(--display);letter-spacing:.1em;background:var(--yel);color:#000;border:2px solid #000;padding:4px 7px 3px;transform:rotate(4deg);box-shadow:2px 2px 0 #000}
+.bm-more-row{text-align:center;margin-top:22px}
+@media (max-width:600px){
+  .bm-head{gap:20px}
+  .bm-count{width:100%}
+  .bm-grid{grid-template-columns:1fr}
+  .bm-card{padding:13px;gap:12px}
+  .bm-board{width:104px}
+  .bm-move{font-size:30px}
+}
