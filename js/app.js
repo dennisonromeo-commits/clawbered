@@ -512,14 +512,19 @@ function renderBrilliant(D) {
       </div>
     </article>`;
   }).join("");
+  // Boards render eagerly (at most ~20 tiny viewOnly boards), not via a lazy IntersectionObserver: lazy rendering left
+  // cards far below the fold (e.g. card 6 on a 390px phone) empty until scrolled, and in full-page/element captures.
+  // Cards hidden behind "More brilliancies" are drawn when they are revealed, since a display:none board has no size.
   const draw = (el) => {
+    if (el.dataset.drawn) return;
     const it = items[+el.dataset.bmBoard], mv = bmDest(it);
     const fen = it.fen_after || mv?.after || it.fen;
     const cg = miniBoard(el, fen, it.my_color === "black" ? "black" : "white");
     if (mv) cg.set({ highlight: { lastMove: false, custom: new Map([[mv.from, "bm-from"], [mv.to, "bm-to"]]) } });
+    el.dataset.drawn = "1";
   };
-  const obs = new IntersectionObserver((es) => es.forEach((x) => { if (x.isIntersecting) { obs.unobserve(x.target); draw(x.target); } }), { rootMargin: "300px" });
-  $("bm-grid").querySelectorAll("[data-bm-board]").forEach((el) => obs.observe(el));
+  const drawVisible = () => $("bm-grid").querySelectorAll(".bm-card:not([hidden]) [data-bm-board]").forEach(draw);
+  drawVisible();
   const more = $("bm-more"), extra = items.length - BM_SHOW;
   if (extra > 0) {
     more.hidden = false; more.textContent = `More brilliancies (+${extra})`;
@@ -528,6 +533,7 @@ function renderBrilliant(D) {
       $("bm-grid").querySelectorAll(".bm-extra").forEach((el) => { el.hidden = !open; });
       more.dataset.open = open ? "1" : "0";
       more.textContent = open ? "Show fewer" : `More brilliancies (+${extra})`;
+      if (open) requestAnimationFrame(drawVisible);
     };
   }
 }
