@@ -485,7 +485,8 @@ function bmDest(it) {
 function renderBrilliant(D) {
   const B = D.brilliant_moves, sec = $("brilliant");
   const items = (B?.items || []).filter((x) => x && x.fen && x.move_san).slice()
-    .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+    // wins first (newest first), then non-wins (newest first), so the first BM_SHOW cards are wins whenever there are enough
+    .sort((a, b) => ((b.result === "W") - (a.result === "W")) || String(b.date || "").localeCompare(String(a.date || "")));
   // headline: Chess.com's lifetime brilliancy tally. A `count` that is just the number of items is not that tally, so fall back to 222.
   const c = Number(B?.count);
   $("bm-num").textContent = nf(Number.isFinite(c) && c > items.length ? c : 222);
