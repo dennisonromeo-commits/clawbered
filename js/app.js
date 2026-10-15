@@ -1,8 +1,9 @@
 // CLAWBERED v1 front end. Loads pipeline JSON and renders every section.
 import { Replay, buildPositions, miniBoard, HANDLES, baseSeconds, brilliantRaw, brilliantPlies } from "./replay.js";
+import { Chess } from "../vendor/chessjs/chess.js";
 
 const CFG = window.CLAWBERED_CONFIG || { dataPaths: ["data/"] };
-const FILES = ["summary", "highlights", "games_of_period", "clock_chaos", "openings", "rating_timeline", "heatmap", "upsets", "endgame", "vault"];
+const FILES = ["summary", "highlights", "games_of_period", "clock_chaos", "openings", "rating_timeline", "heatmap", "upsets", "endgame", "vault", "brilliant_moves"];
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const nf = (n) => Number(n).toLocaleString("en-US");
@@ -192,7 +193,10 @@ function renderStats(D) {
   const P = s.peaks;
   $("peaks").innerHTML = ["chesscom_bullet", "lichess_bullet", "chesscom_blitz", "lichess_blitz"].filter((k) => P[k]).map((k) => {
     const p = P[k], delta = p.current - p.first;
-    return `<div class="peak"><div><div class="p">${p.peak}</div><div class="m">${esc(p.plat)} ${esc(p.tclass)} · peak ${fmtDate(p.date)}</div></div>
+    // NEW PEAK stamp: the peak is the current rating and was set in the last week of the data
+    const end = s.period?.end, fresh = end && p.current === p.peak && (Date.parse(end) - Date.parse(p.date)) / 864e5 <= 7;
+    const stamp = k === "chesscom_blitz" && fresh ? `<span class="peak-stamp" title="New peak ${p.peak}, ${fmtDate(p.date)}">NEW PEAK</span>` : "";
+    return `<div class="peak${stamp ? " has-stamp" : ""}"><div><div class="p">${p.peak}${stamp}</div><div class="m">${esc(p.plat)} ${esc(p.tclass)} · peak ${fmtDate(p.date)}</div></div>
       <span class="d" title="Start of 2026 → now">${delta > 0 ? "+" + delta + " in 2026" : "PEAK " + p.peak}</span></div>`;
   }).join("");
 }
@@ -471,6 +475,63 @@ function renderVault(D) {
   hydrateMinis($("vault-list"));
 }
 
+// ---------- Brilliant Moves showcase (data/brilliant_moves.json) ----------
+// Never reads the `opponent` field: opponents render only as "Opponent (rating)".
+const BM_SHOW = 6;
+const BM_RES = { W: "Won", L: "Lost", D: "Draw" };
+function bmDest(it) {
+  try { const c = new Chess(it.fen); const m = c.move(it.move_san); return { from: m.from, to: m.to, after: c.fen() }; } catch { return null; }
+}
+function renderBrilliant(D) {
+  const B = D.brilliant_moves, sec = $("brilliant");
+  const items = (B?.items || []).filter((x) => x && x.fen && x.move_san).slice()
+    .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+  // headline: Chess.com's lifetime brilliancy tally. A `count` that is just the number of items is not that tally, so fall back to 222.
+  const c = Number(B?.count);
+  $("bm-num").textContent = nf(Number.isFinite(c) && c > items.length ? c : 222);
+  if (!items.length) { $("bm-grid").innerHTML = ""; return; }
+  $("bm-grid").innerHTML = items.map((it, i) => {
+    const year = String(it.date || "").slice(0, 4);
+    const old = year && year < "2026";
+    const opp = `Opponent (${Number.isFinite(Number(it.opponent_rating)) ? Number(it.opponent_rating) : "?"})`;
+    // result is secondary: wins get a short "Won by …", losses/draws stay small and neutral; `how` is optional (null hides it)
+    const how = typeof it.how === "string" && it.how.trim() ? it.how.trim() : "";
+    const howTxt = how ? ` by ${how === "resigned" ? "resignation" : how === "checkmated" ? "checkmate" : how}` : "";
+    const resWord = BM_RES[it.result] || "";
+    const res = resWord ? (it.result === "W" ? resWord + howTxt : resWord) : "";
+    const label = it.move_label || it.move_san;
+    const year4 = /^\d{4}-/.test(String(it.date || "")) ? it.date : "";
+    return `<article class="bm-card${i >= BM_SHOW ? " bm-extra" : ""}"${i >= BM_SHOW ? " hidden" : ""} data-bm="${i}">
+      ${old ? `<span class="bm-year">${esc(year)}</span>` : ""}
+      <div class="bm-board" data-bm-board="${i}"></div>
+      <div class="bm-body">
+        <div class="bm-move">${esc(label)}<span class="bm-bang">!!</span></div>
+        <span class="chip bril">BRILLIANT</span>
+        <div class="bm-meta"><b>${esc(opp)}</b>${res ? ` · <span class="bm-res${it.result === "W" ? "" : " bm-res-n"}">${esc(res)}</span>` : ""}${(year4 || it.time_class) ? "<br>" : ""}${year4 ? esc(fmtDate(year4)) : ""}${year4 && it.time_class ? " · " : ""}${it.time_class ? esc(it.time_class) : ""}</div>
+        ${typeof it.why === "string" && it.why ? `<p class="bm-why">${esc(it.why)}</p>` : ""}
+      </div>
+    </article>`;
+  }).join("");
+  const draw = (el) => {
+    const it = items[+el.dataset.bmBoard], mv = bmDest(it);
+    const fen = it.fen_after || mv?.after || it.fen;
+    const cg = miniBoard(el, fen, it.my_color === "black" ? "black" : "white");
+    if (mv) cg.set({ highlight: { lastMove: false, custom: new Map([[mv.from, "bm-from"], [mv.to, "bm-to"]]) } });
+  };
+  const obs = new IntersectionObserver((es) => es.forEach((x) => { if (x.isIntersecting) { obs.unobserve(x.target); draw(x.target); } }), { rootMargin: "300px" });
+  $("bm-grid").querySelectorAll("[data-bm-board]").forEach((el) => obs.observe(el));
+  const more = $("bm-more"), extra = items.length - BM_SHOW;
+  if (extra > 0) {
+    more.hidden = false; more.textContent = `More brilliancies (+${extra})`;
+    more.onclick = () => {
+      const open = more.dataset.open !== "1";
+      $("bm-grid").querySelectorAll(".bm-extra").forEach((el) => { el.hidden = !open; });
+      more.dataset.open = open ? "1" : "0";
+      more.textContent = open ? "Show fewer" : `More brilliancies (+${extra})`;
+    };
+  }
+}
+
 function registerAll(D) {
   // highlights first (richest: title, stickers, evals)
   for (const h of D.highlights?.items || []) register(h);
@@ -507,7 +568,7 @@ async function main() {
   catch (e) { console.error(e); $("hero-tickets").innerHTML = `<div class="ticket"><div class="l">Data not found</div><div class="s">${esc(e.message)}</div></div>`; return; }
   window.CLAWBERED_DATA = D;
   registerAll(D);
-  const steps = [renderHero, renderStats, renderReel, renderGOTW, renderChaos, renderOpenings, renderRatings, renderHeat, renderUpsets, renderGrind, renderVault, heroBoard];
+  const steps = [renderHero, renderBrilliant, renderStats, renderReel, renderGOTW, renderChaos, renderOpenings, renderRatings, renderHeat, renderUpsets, renderGrind, renderVault, heroBoard];
   for (const f of steps) { try { f(D); } catch (e) { console.error(`[CLAWBERED] ${f.name} failed`, e); } }
   hydrateMinis();
   const s = D.summary?.period;
