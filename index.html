@@ -20,15 +20,14 @@
 <header class="topbar">
   <a class="brand" href="#top"><img src="img/lobster-favicon.svg" alt="" width="34" height="34"><span>CLAWBERED</span></a>
   <nav class="nav" aria-label="Sections">
-    <a href="#brilliant">Brilliant</a><a href="#rosen">Rosen</a><a href="#stats">Stats</a><a href="#gotw">Picks</a><a href="#reel">Reel</a><a href="#chaos">Clock Chaos</a>
-    <a href="#openings">Openings</a><a href="#ratings">Ratings</a><a href="#heatmap">Heatmap</a><a href="#upsets">Upsets</a><a href="#vault">Vault</a>
+    <a href="#brilliant">Brilliant</a><a href="#gotw">Picks</a><a href="#rosen">Rosen</a><a href="#reel">Reel</a><a href="#upsets">Upsets</a><a href="#chaos">Clock Chaos</a><a href="#vault">Vault</a><a href="#stats">Stats</a><a href="#ratings">Ratings</a><a href="#openings">Openings</a><a href="#heatmap">Heatmap</a>
   </nav>
 </header>
 
 <main id="top">
 
 <!-- 1. HERO -->
-<section class="hero" id="hero">
+<section class="hero hero-compact" id="hero">
   <div class="hero-copy">
     <p class="kicker"><span class="dot"></span> 2026 bullet<span class="k-long"> chess</span> · <span class="k-long" data-bind="period"></span><span class="k-short" data-bind="period-short"></span></p>
     <h1 class="logotype" aria-label="CLAWBERED"><span>CLAW</span><span>BERED</span></h1>
@@ -52,7 +51,6 @@
   </div>
 </section>
 
-<div class="marquee" aria-hidden="true"><div class="marquee-track" id="marquee"></div></div>
 
 <!-- 1b. BRILLIANT MOVES -->
 <section class="section bm" id="brilliant">
@@ -62,6 +60,14 @@
   </div>
   <div class="bm-grid" id="bm-grid"></div>
   <div class="bm-more-row"><button class="btn bm-more" id="bm-more" type="button" hidden>More brilliancies</button></div>
+</section>
+
+<div class="marquee" aria-hidden="true"><div class="marquee-track" id="marquee"></div></div>
+
+<!-- 3. GAMES OF THE WEEK / MONTH / YEAR -->
+<section class="section" id="gotw">
+  <header class="sec-head"><span class="sec-no">Nº 01</span><h2>Games of the Week · Month · Year</h2><p class="sec-sub" id="gotw-note"></p></header>
+  <div class="gotw" id="gotw-grid"></div>
 </section>
 
 <!-- 1c. ROSEN SCORE (all-time, not part of the 2026 stats) -->
@@ -76,26 +82,9 @@
   <div class="bm-more-row"><button class="btn bm-more" id="rs-more" type="button" hidden>All feats</button></div>
 </section>
 
-<!-- 2. STATS -->
-<section class="section" id="stats">
-  <header class="sec-head"><span class="sec-no">Nº 01</span><h2>The Numbers</h2><p class="sec-sub" data-bind="period-note"></p></header>
-  <div class="stat-grid" id="stat-big"></div>
-  <div class="dash">
-    <article class="panel" id="panel-formats"><h3>By site &amp; format</h3><div id="formats"></div></article>
-    <article class="panel" id="panel-winsby"><h3>How the wins land</h3><div id="winsby"></div></article>
-    <article class="panel" id="panel-peaks"><h3>Peak ratings, 2026</h3><div id="peaks"></div></article>
-  </div>
-</section>
-
-<!-- 3. GAMES OF THE WEEK / MONTH / YEAR -->
-<section class="section" id="gotw">
-  <header class="sec-head"><span class="sec-no">Nº 02</span><h2>Games of the Week · Month · Year</h2><p class="sec-sub" id="gotw-note"></p></header>
-  <div class="gotw" id="gotw-grid"></div>
-</section>
-
 <!-- 4. HIGHLIGHTS REEL + REPLAY BOARD -->
 <section class="section" id="reel">
-  <header class="sec-head"><span class="sec-no">Nº 03</span><h2>Highlights Reel</h2><p class="sec-sub" id="reel-method"></p></header>
+  <header class="sec-head"><span class="sec-no">Nº 02</span><h2>Highlights Reel</h2><p class="sec-sub" id="reel-method"></p></header>
   <div class="theater" id="theater">
     <div class="theater-board">
       <div class="clock-plate top" id="clk-top"><span class="who"></span><span class="time">–</span></div>
@@ -135,6 +124,12 @@
   <button class="btn reel-more" id="reel-more" hidden>Show all</button>
 </section>
 
+<!-- 9. UPSETS -->
+<section class="section" id="upsets">
+  <header class="sec-head"><span class="sec-no">Nº 03</span><h2>Top Upsets</h2><p class="sec-sub" id="upset-note"></p></header>
+  <div class="upsets" id="upset-list"></div>
+</section>
+
 <!-- 5. CLOCK CHAOS -->
 <section class="section chaos" id="chaos">
   <header class="sec-head"><span class="sec-no">Nº 04</span><h2>Clock-Chaos Wall of Fame</h2><p class="sec-sub" id="chaos-note"></p></header>
@@ -143,40 +138,6 @@
   <div class="wall" id="wall-lowest"></div>
   <h3 class="wall-h">The −3 Club <small>deepest material holes, still won</small></h3>
   <div class="wall" id="wall-minus3"></div>
-</section>
-
-<!-- 6. OPENINGS -->
-<section class="section" id="openings">
-  <header class="sec-head"><span class="sec-no">Nº 05</span><h2>Best Openings</h2><p class="sec-sub" id="open-note"></p></header>
-  <div class="open-cols">
-    <div><h3 class="col-h"><span class="pc w">♔</span> With White</h3><div id="open-white" class="open-list"></div></div>
-    <div><h3 class="col-h"><span class="pc b">♚</span> With Black</h3><div id="open-black" class="open-list"></div></div>
-  </div>
-  <h3 class="col-h workh">The workhorses <small>most wins in 2026</small></h3>
-  <div class="workhorses" id="open-most"></div>
-</section>
-
-<!-- 7. RATINGS -->
-<section class="section" id="ratings">
-  <header class="sec-head"><span class="sec-no">Nº 06</span><h2>The Climb</h2><p class="sec-sub" id="rating-note"></p></header>
-  <div class="rating-hero" id="rating-hero"></div>
-  <div class="chips" id="rating-chips"></div>
-  <div class="chart-wrap"><svg id="rating-chart" viewBox="0 0 1000 440" role="img" aria-label="Chess.com bullet rating in 2026, with optional Chess.com blitz and Lichess lines"></svg><div class="chart-tip" id="rating-tip"></div></div>
-  <div class="climb-cards" id="climb-cards"></div>
-</section>
-
-<!-- 8. HEATMAP -->
-<section class="section" id="heatmap">
-  <header class="sec-head"><span class="sec-no">Nº 07</span><h2>When the Claws Come Out</h2><p class="sec-sub" id="heat-note"></p></header>
-  <div class="heat-best" id="heat-best"></div>
-  <div class="heat-scroll"><div class="heat" id="heat-grid"></div></div>
-  <p class="heat-detail" id="heat-detail">Tap or hover a cell.</p>
-</section>
-
-<!-- 9. UPSETS -->
-<section class="section" id="upsets">
-  <header class="sec-head"><span class="sec-no">Nº 08</span><h2>Top Upsets</h2><p class="sec-sub" id="upset-note"></p></header>
-  <div class="upsets" id="upset-list"></div>
 </section>
 
 <!-- Light & upbeat endgame bonus -->
@@ -189,6 +150,45 @@
 <section class="section vault" id="vault">
   <header class="sec-head"><span class="sec-no">Archive</span><h2>From the Vault</h2><p class="sec-sub" id="vault-note"></p></header>
   <div class="vault-list" id="vault-list"></div>
+</section>
+
+<!-- 2. STATS -->
+<section class="section" id="stats">
+  <header class="sec-head"><span class="sec-no">Nº 05</span><h2>The Numbers</h2><p class="sec-sub" data-bind="period-note"></p></header>
+  <div class="stat-grid" id="stat-big"></div>
+  <div class="dash">
+    <article class="panel" id="panel-formats"><h3>By site &amp; format</h3><div id="formats"></div></article>
+    <article class="panel" id="panel-winsby"><h3>How the wins land</h3><div id="winsby"></div></article>
+    <article class="panel" id="panel-peaks"><h3>Peak ratings, 2026</h3><div id="peaks"></div></article>
+  </div>
+</section>
+
+<!-- 7. RATINGS -->
+<section class="section" id="ratings">
+  <header class="sec-head"><span class="sec-no">Nº 06</span><h2>The Climb</h2><p class="sec-sub" id="rating-note"></p></header>
+  <div class="rating-hero" id="rating-hero"></div>
+  <div class="chips" id="rating-chips"></div>
+  <div class="chart-wrap"><svg id="rating-chart" viewBox="0 0 1000 440" role="img" aria-label="Chess.com bullet rating in 2026, with optional Chess.com blitz and Lichess lines"></svg><div class="chart-tip" id="rating-tip"></div></div>
+  <div class="climb-cards" id="climb-cards"></div>
+</section>
+
+<!-- 6. OPENINGS -->
+<section class="section" id="openings">
+  <header class="sec-head"><span class="sec-no">Nº 07</span><h2>Best Openings</h2><p class="sec-sub" id="open-note"></p></header>
+  <div class="open-cols">
+    <div><h3 class="col-h"><span class="pc w">♔</span> With White</h3><div id="open-white" class="open-list"></div></div>
+    <div><h3 class="col-h"><span class="pc b">♚</span> With Black</h3><div id="open-black" class="open-list"></div></div>
+  </div>
+  <h3 class="col-h workh">The workhorses <small>most wins in 2026</small></h3>
+  <div class="workhorses" id="open-most"></div>
+</section>
+
+<!-- 8. HEATMAP -->
+<section class="section" id="heatmap">
+  <header class="sec-head"><span class="sec-no">Nº 08</span><h2>When the Claws Come Out</h2><p class="sec-sub" id="heat-note"></p></header>
+  <div class="heat-best" id="heat-best"></div>
+  <div class="heat-scroll"><div class="heat" id="heat-grid"></div></div>
+  <p class="heat-detail" id="heat-detail">Tap or hover a cell.</p>
 </section>
 
 </main>
