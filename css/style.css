@@ -449,3 +449,8 @@ cg-board square.check{background:radial-gradient(ellipse at center,rgba(255,0,0,
   .bm-board{width:104px}
   .bm-move{font-size:30px}
 }
+.bm-res-n{font-size:11.5px;color:var(--mute);text-transform:lowercase;letter-spacing:.02em}
+/* every brilliant card the same height (rows equalise even when optional rows are hidden) */
+.bm-grid{grid-auto-rows:1fr;align-items:stretch}
+.bm-card{height:100%;box-sizing:border-box}
+.bm-meta{min-height:2.9em}

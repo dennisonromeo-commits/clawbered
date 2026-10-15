@@ -494,16 +494,21 @@ function renderBrilliant(D) {
     const year = String(it.date || "").slice(0, 4);
     const old = year && year < "2026";
     const opp = `Opponent (${Number.isFinite(Number(it.opponent_rating)) ? Number(it.opponent_rating) : "?"})`;
-    const res = [BM_RES[it.result] || "", it.how ? `by ${it.how === "resigned" ? "resignation" : it.how === "checkmated" ? "checkmate" : it.how}` : ""].filter(Boolean).join(" ");
+    // result is secondary: wins get a short "Won by …", losses/draws stay small and neutral; `how` is optional (null hides it)
+    const how = typeof it.how === "string" && it.how.trim() ? it.how.trim() : "";
+    const howTxt = how ? ` by ${how === "resigned" ? "resignation" : how === "checkmated" ? "checkmate" : how}` : "";
+    const resWord = BM_RES[it.result] || "";
+    const res = resWord ? (it.result === "W" ? resWord + howTxt : resWord) : "";
     const label = it.move_label || it.move_san;
+    const year4 = /^\d{4}-/.test(String(it.date || "")) ? it.date : "";
     return `<article class="bm-card${i >= BM_SHOW ? " bm-extra" : ""}"${i >= BM_SHOW ? " hidden" : ""} data-bm="${i}">
       ${old ? `<span class="bm-year">${esc(year)}</span>` : ""}
       <div class="bm-board" data-bm-board="${i}"></div>
       <div class="bm-body">
         <div class="bm-move">${esc(label)}<span class="bm-bang">!!</span></div>
         <span class="chip bril">BRILLIANT</span>
-        <div class="bm-meta"><b>${esc(opp)}</b> · ${esc(res)}<br>${it.date ? esc(fmtDate(it.date)) : ""}${it.time_class ? ` · ${esc(it.time_class)}` : ""}</div>
-        ${it.why ? `<p class="bm-why">${esc(it.why)}</p>` : ""}
+        <div class="bm-meta"><b>${esc(opp)}</b>${res ? ` · <span class="bm-res${it.result === "W" ? "" : " bm-res-n"}">${esc(res)}</span>` : ""}${(year4 || it.time_class) ? "<br>" : ""}${year4 ? esc(fmtDate(year4)) : ""}${year4 && it.time_class ? " · " : ""}${it.time_class ? esc(it.time_class) : ""}</div>
+        ${typeof it.why === "string" && it.why ? `<p class="bm-why">${esc(it.why)}</p>` : ""}
       </div>
     </article>`;
   }).join("");
