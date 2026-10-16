@@ -558,6 +558,11 @@ const RS_WHY = {
   "Pawn X": "Five pawns drawn into an X.",
   "Pawn Cube": "A tidy 2\u00d72 block of pawns.",
   "Royal Family Fork": "One knight hitting king and queen (and more) at once.",
+  "Checkmate in 3 Moves": "Game over by move three. Blink and you missed it.",
+  "Checkmate in 4 Moves": "Four moves, one queen, zero mercy.",
+  "No Captures before Move 30": "Thirty moves of polite staring. Nobody takes anything.",
+  "Win with Insufficient Material": "Can\u2019t mate, didn\u2019t need to: the clock did it.",
+  "Lefong": "The opponent\u2019s bishop is just\u2026 hanging. Thank you very much.",
 };
 
 const RS_MISSED = "Flag Opponent Who Had Mate in 1"; // key_move_san is the opponent's missed mate
@@ -568,7 +573,8 @@ function rsExample(ex, feat) {
   const res = RS_RES[ex.result] || "";
   const d = /^\d{4}-\d\d-\d\d$/.test(ex.date || "") ? fmtDate(ex.date) : "";
   const mv = ex.key_move_san ? (missed ? `<span class="rs-missed">Missed: ${esc(ex.key_move_san)}</span>` : esc(ex.key_move_san)) : "";
-  return `<div class="rs-ex">
+  const site = /lichess/i.test(ex.site || "") ? "LICHESS" : /chess\.com/i.test(ex.site || "") ? "CHESS.COM" : "";
+  return `<div class="rs-ex">${site ? `<span class="rs-site">${site}</span>` : ""}
       <div class="bm-board rs-board" data-rs-board="${esc(feat)}"></div>
       <div class="rs-exbody">${mv ? `<div class="rs-mv">${mv}</div>` : ""}
         ${typeof ex.caption === "string" && ex.caption ? `<p class="rs-cap2">${esc(ex.caption)}</p>` : ""}
@@ -591,24 +597,34 @@ function drawRsBoard(el, ex) {
 }
 function renderRosen(D) {
   const R = D.rosen_score, sec = $("rosen");
-  const feats = Object.entries(R?.accomplishments || {}).filter(([k, v]) => k && Number(v) > 0).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  // per_feat (combined + per-site) is preferred; the old flat `accomplishments` map still works
+  const PF = Array.isArray(R?.per_feat) && R.per_feat.length
+    ? R.per_feat.map((f) => ({ k: f.feat, v: Number(f.combined ?? (Number(f.chesscom) || 0) + (Number(f.lichess) || 0)), cc: f.chesscom, li: f.lichess }))
+    : Object.entries(R?.accomplishments || {}).map(([k, v]) => ({ k, v: Number(v) }));
+  const feats = PF.filter((f) => f.k && f.v > 0).sort((a, b) => b.v - a.v || a.k.localeCompare(b.k));
   if (!R || !feats.length) { sec.style.display = "none"; return; }
-  const total = Number(R.total_trophies) || feats.reduce((a, [, v]) => a + Number(v), 0);
-  const done = Number(R.goals_completed) || feats.length, all = Number(R.goals_total) || 63;
+  const T = R.totals || {}, C = T.combined || {};
+  const total = Number(C.trophies ?? R.total_trophies) || feats.reduce((a, f) => a + f.v, 0);
+  const done = Number(C.goals_completed ?? R.goals_completed) || feats.length, all = Number(R.goals_total) || 63;
+  const games = Number(C.games_analyzed ?? R.games_analyzed) || 0;
   $("rs-num").textContent = nf(total);
-  $("rs-goals-txt").textContent = `${done} / ${all} goals`;
+  $("rs-goals-txt").textContent = `${done} / ${all} feats`;
   $("rs-fill").style.width = `${Math.min(100, (100 * done) / all)}%`;
+  $("rs-split").textContent = T.chesscom && T.lichess ? `Chess.com ${nf(T.chesscom.trophies)} · Lichess ${nf(T.lichess.trophies)}` : "";
+  const both = !!(T.chesscom && T.lichess);
   const asOf = /^\d{4}-\d\d-\d\d$/.test(R.as_of || "") ? fmtDate(R.as_of) : "";
-  $("rs-cap").innerHTML = `per <a href="https://rosenscore.com" target="_blank" rel="noopener">rosenscore.com</a>${R.games_analyzed ? `, ${nf(R.games_analyzed)} Chess.com games` : ""}${asOf ? `, ${esc(asOf)}` : ""}`;
+  const asMon = /^\d{4}-\d\d/.test(R.as_of || "") ? `${MON[+R.as_of.slice(5, 7) - 1]} ${R.as_of.slice(0, 4)}` : "";
+  $("rs-cap").innerHTML = `per <a href="https://rosenscore.com" target="_blank" rel="noopener">rosenscore.com</a>${games ? `, ${nf(games)} games on ${both ? "Chess.com + Lichess" : "Chess.com"}` : ""}${asMon ? `, ${esc(asMon)}` : ""}`;
   // one example game per feat (data/rosen_examples.json, or rosen_score.examples); never reads opponent names
   const EX = new Map((Array.isArray(D.rosen_examples) ? D.rosen_examples : D.rosen_examples?.items || R.examples || [])
     .filter((x) => x && x.feat && x.fen).map((x) => [x.feat, x]));
-  $("rs-grid").innerHTML = feats.map(([k, v], i) => {
+  $("rs-grid").innerHTML = feats.map(({ k, v, cc, li }, i) => {
     const ex = EX.get(k);
+    const split = cc != null || li != null ? `<div class="rs-sitesplit">Chess.com ${nf(cc || 0)} · Lichess ${nf(li || 0)}</div>` : "";
     return `<div class="rs-card${i < 3 ? " rs-top" : ""}${i >= RS_SHOW ? " rs-extra" : ""}"${i >= RS_SHOW ? " hidden" : ""}>
       ${i < 3 ? `<span class="rs-rank">#${i + 1}</span>` : ""}
       <div class="rs-head"><div class="rs-n">${nf(v)}<small>×</small></div>
-      <div><div class="rs-k">${esc(k)}</div>${RS_WHY[k] ? `<div class="rs-w">${esc(RS_WHY[k])}</div>` : ""}</div></div>
+      <div><div class="rs-k">${esc(k)}</div>${split}${RS_WHY[k] ? `<div class="rs-w">${esc(RS_WHY[k])}</div>` : ""}</div></div>
       ${ex ? rsExample(ex, k) : ""}</div>`;
   }).join("");
   const drawRs = () => $("rs-grid").querySelectorAll(".rs-card:not([hidden]) [data-rs-board]").forEach((el) => drawRsBoard(el, EX.get(el.dataset.rsBoard)));

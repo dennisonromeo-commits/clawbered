@@ -503,3 +503,10 @@ main > section{scroll-margin-top:0} /* offset comes from html scroll-padding-top
 .bm-board square.rs-miss-to{background:rgba(255,59,47,.75)}
 .bm-board square.rs-miss-from{background:rgba(255,59,47,.32)}
 @media (max-width:600px){.rs-board{width:96px}.rs-mv{font-size:22px}}
+
+/* combined Rosen: site split + monochrome site tag */
+.rs-split{font:11px/1 var(--mono);color:var(--mute);margin-top:6px;letter-spacing:.02em}
+.rs-sitesplit{font:10.5px/1.2 var(--mono);color:var(--mute);margin-top:2px}
+.rs-ex{position:relative}
+.rs-site{position:absolute;top:8px;right:0;font:700 9.5px/1 var(--body);letter-spacing:.14em;color:var(--mute);border:1px solid var(--line);border-radius:3px;padding:3px 5px 2px}
+.rs-ex .rs-exbody{padding-top:14px}
