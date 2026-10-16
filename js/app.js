@@ -562,7 +562,7 @@ const RS_WHY = {
   "Checkmate in 4 Moves": "Four moves, one queen, zero mercy.",
   "No Captures before Move 30": "Thirty moves of polite staring. Nobody takes anything.",
   "Win with Insufficient Material": "Can\u2019t mate, didn\u2019t need to: the clock did it.",
-  "Lefong": "The opponent\u2019s bishop is just\u2026 hanging. Thank you very much.",
+  "Lefong": "Opponent left the fianchetto bishop hanging; Bxg7 grabs it, +5.7. Free real estate.",
 };
 
 const RS_MISSED = "Flag Opponent Who Had Mate in 1"; // key_move_san is the opponent's missed mate
