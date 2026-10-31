@@ -413,7 +413,7 @@ cg-board square.check{background:radial-gradient(ellipse at center,rgba(255,0,0,
 #board coords.files:not(.black) coord:nth-child(odd),#board coords.files.black coord:nth-child(even),
 #board coords.ranks:not(.black) coord:nth-child(even),#board coords.ranks.black coord:nth-child(odd){color:#e6d6b4}
 
-/* NEW PEAK stamp (blitz) — small red Deco stamp, same family as the vault stamp */
+/* NEW PEAK stamp — small red Deco stamp, same family as the vault stamp */
 .peak .p{position:relative;display:inline-flex;align-items:center;gap:10px}
 .peak-stamp{font:12px/1 var(--display);letter-spacing:.1em;color:var(--red);border:3px double var(--red);padding:4px 6px 3px;transform:rotate(-6deg);opacity:.92;white-space:nowrap}
 

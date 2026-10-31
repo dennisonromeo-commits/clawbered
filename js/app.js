@@ -195,7 +195,7 @@ function renderStats(D) {
     const p = P[k], delta = p.current - p.first;
     // NEW PEAK stamp: the peak is the current rating and was set in the last week of the data
     const end = s.period?.end, fresh = end && p.current === p.peak && (Date.parse(end) - Date.parse(p.date)) / 864e5 <= 7;
-    const stamp = k === "chesscom_blitz" && fresh ? `<span class="peak-stamp" title="New peak ${p.peak}, ${fmtDate(p.date)}">NEW PEAK</span>` : "";
+    const stamp = fresh ? `<span class="peak-stamp" title="New peak ${p.peak}, ${fmtDate(p.date)}">NEW PEAK</span>` : "";
     return `<div class="peak${stamp ? " has-stamp" : ""}"><div><div class="p">${p.peak}${stamp}</div><div class="m">${esc(p.plat)} ${esc(p.tclass)} · peak ${fmtDate(p.date)}</div></div>
       <span class="d" title="Start of 2026 → now">${delta > 0 ? "+" + delta + " in 2026" : "PEAK " + p.peak}</span></div>`;
   }).join("");
