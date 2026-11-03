@@ -614,7 +614,7 @@ function renderRosen(D) {
   const both = !!(T.chesscom && T.lichess);
   const asOf = /^\d{4}-\d\d-\d\d$/.test(R.as_of || "") ? fmtDate(R.as_of) : "";
   const asMon = /^\d{4}-\d\d/.test(R.as_of || "") ? `${MON[+R.as_of.slice(5, 7) - 1]} ${R.as_of.slice(0, 4)}` : "";
-  $("rs-cap").innerHTML = `per <a href="https://rosenscore.com" target="_blank" rel="noopener">rosenscore.com</a>${games ? `, ${nf(games)} games on ${both ? "Chess.com + Lichess" : "Chess.com"}` : ""}${asMon ? `, ${esc(asMon)}` : ""}`;
+  $("rs-cap").innerHTML = `per <a href="https://rosenscore.com" target="_blank" rel="noopener">rosenscore.com</a> rules${games ? `, ${nf(games)} games on ${both ? "Chess.com + Lichess" : "Chess.com"}` : ""}${asMon ? `, ${esc(asMon)}` : ""}`;
   // one example game per feat (data/rosen_examples.json, or rosen_score.examples); never reads opponent names
   const EX = new Map((Array.isArray(D.rosen_examples) ? D.rosen_examples : D.rosen_examples?.items || R.examples || [])
     .filter((x) => x && x.feat && x.fen).map((x) => [x.feat, x]));
