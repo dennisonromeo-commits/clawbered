@@ -99,24 +99,40 @@ export class Replay {
       viewOnly: true, coordinates: true, animation: { enabled: true, duration: 180 },
       drawable: { enabled: true, visible: true }, highlight: { lastMove: true, check: true },
     });
-    this.p = 0; this.timer = null; this.game = null;
+    this.p = 0; this.timer = null; this.game = null; this.flipped = false;
+    this.speeds = [0.5, 1, 2]; this.speedIx = 1;
     this.scrub = this.$("scrub");
     this.scrub.addEventListener("input", () => { this.stop(); this.go(+this.scrub.value); });
-    root.querySelectorAll(".controls button").forEach((b) => b.addEventListener("click", () => this.act(b.dataset.act)));
+    root.querySelectorAll(".controls button[data-act]").forEach((b) => b.addEventListener("click", () => this.act(b.dataset.act)));
     this.$("movelist").addEventListener("click", (e) => { const b = e.target.closest("button[data-p]"); if (b) { this.stop(); this.go(+b.dataset.p); } });
+    this.$("moments")?.addEventListener("click", (e) => { const b = e.target.closest("button[data-p]"); if (b) { this.stop(); this.go(+b.dataset.p); } });
+    // graphs: press/drag to seek, hover for a readout
     for (const id of ["g-eval", "g-clk"]) {
-      this.$(id).parentElement.addEventListener("click", (e) => {
-        const r = this.$(id).getBoundingClientRect();
-        const f = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
-        this.stop(); this.go(Math.round(f * (this.pos.length - 1)));
+      const svg = this.$(id), box = svg.parentElement;
+      const tip = document.createElement("span"); tip.className = "gtip"; tip.setAttribute("aria-hidden", "true"); box.appendChild(tip);
+      const plyAt = (x) => { const r = svg.getBoundingClientRect(); const f = Math.min(1, Math.max(0, (x - r.left) / r.width)); return { p: Math.round(f * (this.pos.length - 1)), px: f * r.width }; };
+      let down = false;
+      box.addEventListener("pointerdown", (e) => { if (!this.game) return; down = true; box.setPointerCapture?.(e.pointerId); this.stop(); this.go(plyAt(e.clientX).p); });
+      box.addEventListener("pointerup", () => { down = false; });
+      box.addEventListener("pointercancel", () => { down = false; });
+      box.addEventListener("pointermove", (e) => {
+        if (!this.game) return;
+        const { p, px } = plyAt(e.clientX);
+        if (down) this.go(p);
+        tip.textContent = this.readout(p, id === "g-eval" ? "eval" : "clock");
+        tip.style.left = Math.max(4, Math.min(px + 8, box.clientWidth - tip.offsetWidth - 4)) + "px";
+        box.classList.add("hover");
       });
+      box.addEventListener("pointerleave", () => box.classList.remove("hover"));
     }
     // keyboard: only while the theater is on screen
     this.visible = false;
     new IntersectionObserver((es) => es.forEach((x) => (this.visible = x.isIntersecting)), { threshold: 0.25 }).observe(root);
     document.addEventListener("keydown", (e) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (!this.visible || !this.game || /input|textarea|select/i.test(e.target.tagName) && e.target !== this.scrub) return;
-      const map = { ArrowLeft: "prev", ArrowRight: "next", Home: "start", End: "end", " ": "play", k: "key", K: "key" };
+      if (e.key === " " && e.target.closest?.("button")) return; // a focused button handles its own space press
+      const map = { ArrowLeft: "prev", ArrowRight: "next", Home: "start", End: "end", " ": "play", k: "key", K: "key", "[": "mprev", "]": "mnext", f: "flip", F: "flip" };
       if (map[e.key]) { e.preventDefault(); this.act(map[e.key]); }
     });
   }
@@ -125,22 +141,50 @@ export class Replay {
     if (!this.game) return;
     const n = this.pos.length - 1;
     if (a === "play") return this.timer ? this.stop() : this.play();
+    if (a === "speed") { this.speedIx = (this.speedIx + 1) % this.speeds.length; this.setSpeedLabel(); if (this.timer) { this.stop(); this.play(); } return; }
+    if (a === "flip") { this.flipped = !this.flipped; this.orient(); return; }
     this.stop();
     if (a === "start") this.go(0);
     if (a === "end") this.go(n);
     if (a === "prev") this.go(this.p - 1);
     if (a === "next") this.go(this.p + 1);
     if (a === "key") this.go(this.keyPos);
+    if (a === "mnext" || a === "mprev") {
+      const ps = this.moments.map((m) => m.p);
+      const t = a === "mnext" ? ps.find((x) => x > this.p) : [...ps].reverse().find((x) => x < this.p);
+      if (t != null) this.go(t);
+    }
   }
+  orient() {
+    const side = this.flipped ? (this.me === "white" ? "black" : "white") : this.me;
+    this.cg.set({ orientation: side });
+    this.root.classList.toggle("flipped", this.flipped);
+    // clock plates follow the board: the side at the bottom of the board gets the bottom plate
+    this.topSide = side === "white" ? "black" : "white";
+    this.botSide = side;
+    const g = this.game, who = (c) => c === this.me ? `${HANDLES[g.plat] || "Him"} (${g.me})` : `${g.opp}${g.opp_berserk ? " · berserked" : ""}`;
+    this.$("clk-top").querySelector(".who").textContent = who(this.topSide);
+    this.$("clk-bot").querySelector(".who").textContent = who(this.botSide);
+    this.$("clk-top").classList.toggle("me", this.topSide === this.me);
+    this.$("clk-bot").classList.toggle("me", this.botSide === this.me);
+    const fb = this.root.querySelector('[data-act="flip"]'); if (fb) fb.setAttribute("aria-pressed", String(this.flipped));
+    this.go(this.p, true);
+  }
+  setSpeedLabel() { const b = this.root.querySelector('[data-act="speed"]'); if (b) { const v = this.speeds[this.speedIx]; b.textContent = `${v}×`; b.setAttribute("aria-label", `Playback speed ${v}×, press to change`); } }
   play() {
     if (this.p >= this.pos.length - 1) this.go(0);
     this.setPlayIcon(true);
-    this.timer = setInterval(() => {
+    const step = () => {
       if (this.p >= this.pos.length - 1) return this.stop();
       this.go(this.p + 1);
-    }, 650);
+      const base = 650 / this.speeds[this.speedIx];
+      // linger on the key moment and on brilliancies so they register
+      const hold = this.p === this.keyPos || this.brilPlies.has(this.p - 1) ? 1600 / Math.sqrt(this.speeds[this.speedIx]) : 0;
+      this.timer = setTimeout(step, base + hold);
+    };
+    this.timer = setTimeout(step, 120);
   }
-  stop() { clearInterval(this.timer); this.timer = null; this.setPlayIcon(false); }
+  stop() { clearTimeout(this.timer); this.timer = null; this.setPlayIcon(false); }
   setPlayIcon(on) { const b = this.root.querySelector('[data-act="play"]'); b.textContent = on ? "⏸" : "▶"; b.setAttribute("aria-label", on ? "Pause" : "Play"); }
 
   load(g, { at = "key" } = {}) {
@@ -151,23 +195,62 @@ export class Replay {
     this.keyPos = Math.min(n, g.key_ply != null ? g.key_ply + 1 : n);
     this.me = g.color === "Black" ? "black" : "white";
     this.base = baseSeconds(g.tc);
-    this.cg.set({ orientation: this.me });
     this.scrub.max = n;
     // eval in centipawns from HIS side, per position (index p = after p plies)
     this.evMe = g.ev && g.ev.length ? [null, ...g.ev.map((v) => (v == null ? null : this.me === "white" ? v : -v))] : null;
     this.brilPlies = brilliantPlies(g);
+    this.swings = this.computeSwings();
+    this.flipped = false;
+    this.topSide = this.me === "white" ? "black" : "white"; this.botSide = this.me;
+    this.moments = this.computeMoments();
     this.renderMoves();
     this.renderGraphs();
-    const who = (side) => side === this.me
-      ? `${HANDLES[g.plat] || "Him"} (${g.me})`
-      : `${g.opp}${g.opp_berserk ? " · berserked" : ""}`;
-    this.topSide = this.me === "white" ? "black" : "white";
-    const top = this.$("clk-top"), bot = this.$("clk-bot");
-    top.querySelector(".who").textContent = who(this.topSide);
-    bot.querySelector(".who").textContent = who(this.me);
-    top.classList.toggle("me", false); bot.classList.toggle("me", true);
+    this.renderMoments();
     this.$("evalbar").classList.toggle("na", !this.evMe);
+    this.orient();
     this.go(at === "key" ? this.keyPos : at === "start" ? 0 : n, true);
+  }
+
+  /** Eval change caused by each ply, from his side (centipawns, clamped so mates read as ±10). Only stored evals are used. */
+  computeSwings() {
+    const out = new Map();
+    if (!this.evMe) return out;
+    const c = (v) => Math.max(-1000, Math.min(1000, v));
+    for (let p = 1; p < this.evMe.length; p++) {
+      const a = p === 1 ? 20 * (this.me === "white" ? 1 : -1) : this.evMe[p - 1], b = this.evMe[p];
+      if (a == null || b == null) continue;
+      const d = c(b) - c(a);
+      if (Math.abs(d) >= 200) out.set(p, { d, from: a, to: b, byHim: (p % 2 === 1) === (this.me === "white") });
+    }
+    return out;
+  }
+
+  /** Navigable moments, all derived from the stored game: key move, brilliancies, the biggest eval swings, first time his clock hits 5s, the finish. */
+  computeMoments() {
+    const n = this.pos.length - 1, M = new Map();
+    const add = (p, kind, label, why) => { if (p < 1 || p > n || M.has(p)) return; M.set(p, { p, kind, label, why }); };
+    const mv = (p) => `${Math.ceil(p / 2)}${p % 2 ? "." : "..."}${this.pos[p].san}`;
+    add(this.keyPos, "key", `★ ${mv(this.keyPos)}`, "Key moment");
+    for (const b of this.brilPlies) add(b + 1, "bril", `${mv(b + 1)}!!`, "Brilliant (Chess.com Game Review)");
+    [...this.swings.values()].length && [...this.swings.entries()].sort((a, b) => Math.abs(b[1].d) - Math.abs(a[1].d)).slice(0, 3)
+      .forEach(([p, s]) => add(p, s.d > 0 ? "up" : "down", `${s.d > 0 ? "▲" : "▼"} ${mv(p)}`, `Eval swing ${fmtEval(s.from)} → ${fmtEval(s.to)} for him`));
+    if (!isNaN(this.base) && this.base >= 30 && (this.game.clk || []).length) {
+      for (let p = 1; p <= n; p++) { const t = this.clockAt(this.me, p); if (t != null && t <= 5) { add(p, "clock", `⏱ ${mv(p)}`, `His clock drops to ${fmtClock(t)}`); break; } }
+    }
+    add(n, "end", `⚑ ${mv(n)}`, "Final move");
+    return [...M.values()].sort((a, b) => a.p - b.p);
+  }
+
+  renderMoments() {
+    const el = this.$("moments"); if (!el) return;
+    el.innerHTML = `<span class="mo-l">Jump to</span>` + this.moments.map((m) => `<button type="button" class="mo mo-${m.kind}" data-p="${m.p}" title="${m.why}">${m.label}</button>`).join("");
+  }
+
+  /** One-line readout for the graph hover tooltip. */
+  readout(p, what) {
+    const s = this.pos[p], mv = s.san ? `${Math.ceil(p / 2)}${p % 2 ? "." : "..."}${s.san}` : "Start";
+    if (what === "eval") { const cp = this.evMe ? (p === 0 ? null : this.evMe[p]) : null; return `${mv} · ${cp == null ? "–" : fmtEval(cp)}`; }
+    return `${mv} · him ${fmtClock(this.clockAt(this.me, p))} · opp ${fmtClock(this.clockAt(this.me === "white" ? "black" : "white", p))}`;
   }
 
   clockAt(side, p) {
@@ -189,7 +272,7 @@ export class Replay {
     this.cg.setAutoShapes(p === this.keyPos && s.lastMove ? [{ orig: s.lastMove[0], dest: s.lastMove[1], brush: "red" }] : []);
     this.scrub.value = p;
     // clocks
-    for (const [el, side] of [[this.$("clk-top"), this.topSide], [this.$("clk-bot"), this.me]]) {
+    for (const [el, side] of [[this.$("clk-top"), this.topSide], [this.$("clk-bot"), this.botSide]]) {
       const t = this.clockAt(side, p);
       el.querySelector(".time").textContent = fmtClock(t);
       el.classList.toggle("active", p < n && s.turn === side);
@@ -203,20 +286,23 @@ export class Replay {
     const whitePct = wcp == null ? 50 : 50 + 50 * (2 / (1 + Math.exp(-0.00368 * wcp)) - 1);
     const fill = bar.querySelector(".evalfill"), txt = bar.querySelector(".evaltxt");
     fill.style.height = whitePct + "%";
-    bar.classList.toggle("white-top", this.me === "black"); // White's (cream) end is at the top when he is Black
+    bar.classList.toggle("white-top", this.botSide === "black"); // White's (cream) end is at the top when Black is at the bottom
     const winner = wcp == null || wcp === 0 ? null : wcp > 0 ? "white" : "black";
     txt.textContent = this.evMe ? evalSize(wcp) : "";
     fitEvalLabel(txt);
-    const atBottom = winner ? winner === this.me : true;
+    const atBottom = winner ? winner === this.botSide : true;
     bar.classList.toggle("lbl-top", !atBottom);
-    bar.classList.toggle("lbl-on-dark", winner === "black" || (!winner && this.me === "black"));
+    bar.classList.toggle("lbl-on-dark", winner === "black" || (!winner && this.botSide === "black"));
     bar.dataset.winner = winner || "even";
     bar.title = wcp == null ? "Engine eval" : `Engine eval: ${winner ? (winner === this.me ? "he" : "opponent") + " is better by " + evalSize(wcp) : "level"}`;
     // move label
     const mv = s.san ? `${Math.ceil(p / 2)}${p % 2 ? "." : "..."} ${s.san}` : "Start position";
-    const star = (p === this.keyPos ? "  ★ KEY MOMENT" : "") + (this.brilPlies.has(p - 1) ? "  !! BRILLIANT" : "");
+    const sw = this.swings.get(p);
+    const star = (p === this.keyPos ? "  ★ KEY MOMENT" : "") + (this.brilPlies.has(p - 1) ? "  !! BRILLIANT" : "") + (sw && p !== this.keyPos ? `  ${sw.d > 0 ? "▲" : "▼"} SWING` : "");
     const evs = this.evMe && p > 0 ? (Math.abs(cp) >= 1500 ? `  ·  ${cp > 0 ? "forced mate for him" : "engine sees mate against him"}` : `  ·  eval ${fmtEval(cp)} for him`) : "";
     this.$("ti-move").textContent = `${mv}${star}${evs}`;
+    this.$("ti-step") && (this.$("ti-step").textContent = `${p} / ${n}`);
+    this.$("moments")?.querySelectorAll(".mo").forEach((b) => b.classList.toggle("on", +b.dataset.p === p));
     // move list
     this.$("movelist").querySelectorAll("button.cur").forEach((b) => b.classList.remove("cur"));
     const cur = this.$("movelist").querySelector(`button[data-p="${p}"]`);
@@ -231,7 +317,10 @@ export class Replay {
     for (let p = 1; p < this.pos.length; p++) {
       const num = p % 2 ? `<span class="n">${(p + 1) / 2}.</span>` : "";
       const bril = this.brilPlies.has(p - 1) ? "!!" : "";
-      parts.push(`${p % 2 ? "<li>" + num : ""}<button data-p="${p}" class="${p === this.keyPos ? "key" : ""}${bril ? " bril" : ""}">${this.pos[p].san}${bril}</button>${p % 2 === 0 || p === this.pos.length - 1 ? "</li>" : ""}`);
+      const sw = this.swings.get(p);
+      const swc = sw ? (sw.d > 0 ? " sw-up" : " sw-dn") : "";
+      const swt = sw ? ` title="Eval ${fmtEval(sw.from)} → ${fmtEval(sw.to)} for him"` : "";
+      parts.push(`${p % 2 ? "<li>" + num : ""}<button type="button" data-p="${p}" class="${p === this.keyPos ? "key" : ""}${bril ? " bril" : ""}${swc}"${swt}>${this.pos[p].san}${bril}</button>${p % 2 === 0 || p === this.pos.length - 1 ? "</li>" : ""}`);
     }
     ml.innerHTML = parts.join("");
   }
@@ -241,6 +330,7 @@ export class Replay {
     const X = (i) => (i / n) * W;
     const keyX = X(this.keyPos);
     const keyMark = `<line x1="${keyX}" x2="${keyX}" y1="0" y2="${H}" stroke="#ffd23f" stroke-width="2" stroke-dasharray="4 3" vector-effect="non-scaling-stroke"/>`;
+    const ticks = (this.moments || []).filter((m) => m.kind === "up" || m.kind === "down" || m.kind === "bril").map((m) => `<line x1="${X(m.p)}" x2="${X(m.p)}" y1="0" y2="8" stroke="${m.kind === "down" ? "#ff3b2f" : "#3fd0c9"}" stroke-width="3" vector-effect="non-scaling-stroke"/>`).join("");
     const cursor = `<line class="cur" x1="0" x2="0" y1="0" y2="${H}" stroke="#f4ead6" stroke-width="2" vector-effect="non-scaling-stroke"/>`;
     // eval
     const ge = this.$("g-eval");
@@ -251,7 +341,7 @@ export class Replay {
       const area = `${d} L${W} ${H / 2} Z`;
       ge.innerHTML = `<defs><clipPath id="cpTop"><rect x="0" y="0" width="${W}" height="${H / 2}"/></clipPath><clipPath id="cpBot"><rect x="0" y="${H / 2}" width="${W}" height="${H / 2}"/></clipPath></defs>
         <path d="${area}" fill="#ff3b2f" opacity=".75" clip-path="url(#cpTop)"/><path d="${area}" fill="#3a3f4d" clip-path="url(#cpBot)"/>
-        <line x1="0" x2="${W}" y1="${H / 2}" y2="${H / 2}" stroke="#555" vector-effect="non-scaling-stroke"/>${keyMark}${cursor}`;
+        <line x1="0" x2="${W}" y1="${H / 2}" y2="${H / 2}" stroke="#555" vector-effect="non-scaling-stroke"/>${keyMark}${ticks}${cursor}`;
       ge.parentElement.style.display = "";
     } else {
       ge.parentElement.style.display = "none";
