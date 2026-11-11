@@ -89,7 +89,7 @@ function playGame(uid, scroll = true) {
   replay.load(g);
   const i = PLAYLIST.indexOf(uid);
   $("ti-count").textContent = i >= 0 ? `${i + 1} of ${PLAYLIST.length}` : "";
-  $("ti-prev").disabled = $("ti-next").disabled = i < 0 || PLAYLIST.length < 2;
+  $("ti-prev").disabled = $("ti-next").disabled = !PLAYLIST.length || (i >= 0 && PLAYLIST.length < 2);
   $("ti-title").textContent = g.title || "Highlight";
   $("ti-meta").textContent = `${metaLine(g)} · ${resultLine(g)}${g.opening ? " · " + g.opening : ""}`;
   $("ti-caption").textContent = g.caption || "";
@@ -102,8 +102,9 @@ function playGame(uid, scroll = true) {
 function stepPlaylist(d) {
   if (!replay.game || !PLAYLIST.length) return;
   const i = PLAYLIST.indexOf(replay.game.uid);
-  if (i < 0) return;
-  playGame(PLAYLIST[(i + d + PLAYLIST.length) % PLAYLIST.length], false);
+  // a game from outside the current list (other filter, Upsets, Vault…): step into the list from its start or end
+  const j = i < 0 ? (d > 0 ? 0 : PLAYLIST.length - 1) : (i + d + PLAYLIST.length) % PLAYLIST.length;
+  playGame(PLAYLIST[j], false);
 }
 function shareLink(uid) { const u = new URL(location.href); u.hash = "reel"; u.searchParams.set("g", uid); return u.toString(); }
 function toast(msg) {
@@ -170,6 +171,7 @@ function renderHero(D) {
 }
 
 // Featured-victory spotlight: the top five highlights, each replayed up to its key move, then held.
+// Rotates only while on screen, in a visible tab, not hovered/focused and not paused; resumes where it stopped.
 const SPOT_N = 5, SPOT_LEAD = 12, SPOT_STEP = 480, SPOT_HOLD = 3800;
 function heroBoard(D) {
   const items = (D.highlights?.items || []).slice().sort((a, b) => a.rank - b.rank).slice(0, SPOT_N).map((h) => REG.get(h.id)).filter((g) => g && g.san?.length);
@@ -179,58 +181,68 @@ function heroBoard(D) {
     const pos = buildPositions(g.san), key = Math.min(pos.length - 1, g.key_ply != null ? g.key_ply + 1 : pos.length - 1);
     return { g, pos, key, start: Math.max(0, key - SPOT_LEAD) };
   });
-  const cg = miniBoard($("hero-board"), games[0].pos[0].fen, "white");
+  const sp = $("spotlight"), info = sp.querySelector(".spot-info"), boardEl = $("hero-board");
+  const cg = miniBoard(boardEl, games[0].pos[0].fen, "white");
   cg.set({ drawable: { enabled: false, visible: true } });
-  let i = 0, p = 0, timer = null, paused = reduce, hover = false;
+  let i = 0, p = 0, timer = null, paused = reduce, hover = false, onScreen = true;
   const prog = $("spot-prog"), pauseBtn = $("spot-pause");
+  const running = () => !paused && !hover && onScreen && !document.hidden;
+  const mvName = (G, k) => (k ? `${Math.ceil(k / 2)}${k % 2 ? "." : "..."} ${G.pos[k].san}` : "the start");
   const setPos = (G, k) => {
     const s = G.pos[k];
     cg.set({ fen: s.fen, lastMove: s.lastMove, check: s.check ? s.turn : false, turnColor: s.turn });
     cg.setAutoShapes(k === G.key && s.lastMove ? [{ orig: s.lastMove[0], dest: s.lastMove[1], brush: "red" }] : []);
+    boardEl.setAttribute("aria-label", `Board after ${mvName(G, k)}${k === G.key ? ", the key move" : ""}`);
   };
-  const running = () => !paused && !hover && !document.hidden;
-  const runBar = (ms) => { prog.style.transition = "none"; prog.style.width = "0%"; void prog.offsetWidth; if (ms) { prog.style.transition = `width ${ms}ms linear`; prog.style.width = "100%"; } };
-  const show = (n, animate) => {
+  const barTo = (frac, ms) => { prog.style.transition = "none"; prog.style.width = `${frac * 100}%`; void prog.offsetWidth; if (ms) { prog.style.transition = `width ${ms}ms linear`; prog.style.width = "100%"; } };
+  const remaining = (G) => (G.key - p) * SPOT_STEP + (p === G.key ? SPOT_HOLD : SPOT_HOLD);
+  const total = (G) => (G.key - G.start) * SPOT_STEP + SPOT_HOLD;
+  const tick = () => {
+    const G = games[i];
+    if (!running()) return;
+    if (p < G.key) { p++; setPos(G, p); timer = setTimeout(tick, p === G.key ? SPOT_HOLD : SPOT_STEP); }
+    else show(i + 1);
+  };
+  const run = () => { clearTimeout(timer); if (!running()) return; const G = games[i]; barTo(1 - remaining(G) / total(G), remaining(G)); timer = setTimeout(tick, p === G.key ? SPOT_HOLD : SPOT_STEP); };
+  const freeze = () => { clearTimeout(timer); timer = null; const w = getComputedStyle(prog).width, W = prog.parentElement.clientWidth; prog.style.transition = "none"; prog.style.width = W ? `${(100 * parseFloat(w)) / W}%` : "0%"; };
+  function show(n, { manual = false } = {}) {
     clearTimeout(timer);
     i = (n + games.length) % games.length;
     const G = games[i], g = G.g;
+    info.setAttribute("aria-live", manual ? "polite" : "off"); // announce only changes the visitor asked for
     cg.set({ orientation: g.color === "Black" ? "black" : "white", animation: { enabled: false } });
     $("spot-idx").textContent = `${i + 1} / ${games.length}`;
     $("spot-title").textContent = g.title || "Highlight";
     $("spot-meta").textContent = `${g.plat} · ${g.tc} · ${fmtDate(g.date)} · beat ${g.opp} · ${wonBy(g.term)} in ${g.moves}`;
     $("spot-stickers").innerHTML = (g.stickers || []).slice(0, 3).map((x) => `<span class="chip${/BRILLIANT/.test(x) ? " bril" : ""}">${esc(x)}</span>`).join("");
     $("spot-play").dataset.uid = g.uid;
-    if (!animate) { setPos(G, G.key); p = G.key; runBar(0); if (running()) timer = setTimeout(() => show(i + 1, true), SPOT_HOLD); return; }
-    p = G.start; setPos(G, p);
+    $("spot-play").setAttribute("aria-label", `Watch the replay: ${g.title || "highlight"}`);
+    // static (paused / reduced motion / manual while held): show the key move; otherwise replay the lead-in
+    p = running() ? G.start : G.key;
+    setPos(G, p);
     cg.set({ animation: { enabled: true, duration: 220 } });
-    runBar((G.key - G.start) * SPOT_STEP + SPOT_HOLD);
-    const tick = () => {
-      if (!running()) return;
-      if (p < G.key) { p++; setPos(G, p); timer = setTimeout(tick, p === G.key ? SPOT_HOLD : SPOT_STEP); }
-      else show(i + 1, true);
-    };
-    timer = setTimeout(tick, SPOT_STEP);
-  };
-  const resume = () => { if (running()) show(i, true); };
-  const halt = () => { clearTimeout(timer); runBar(0); setPos(games[i], games[i].key); p = games[i].key; };
-  $("spot-prev").addEventListener("click", () => show(i - 1, running()));
-  $("spot-next").addEventListener("click", () => show(i + 1, running()));
-  $("spot-play").addEventListener("click", () => playGame($("spot-play").dataset.uid));
-  pauseBtn.addEventListener("click", () => {
-    paused = !paused;
+    barTo(0, 0);
+    run();
+  }
+  const setPaused = (v) => {
+    paused = v;
     pauseBtn.setAttribute("aria-pressed", String(paused));
-    pauseBtn.textContent = paused ? "▶" : "❚❚";
+    pauseBtn.textContent = paused ? "Play" : "Pause";
     pauseBtn.setAttribute("aria-label", paused ? "Resume the slideshow" : "Pause the slideshow");
-    paused ? halt() : resume();
-  });
-  if (reduce) { pauseBtn.textContent = "▶"; pauseBtn.setAttribute("aria-pressed", "true"); pauseBtn.setAttribute("aria-label", "Resume the slideshow"); }
-  const sp = $("spotlight");
-  sp.addEventListener("mouseenter", () => { hover = true; halt(); });
-  sp.addEventListener("mouseleave", () => { hover = false; resume(); });
-  sp.addEventListener("focusin", () => { hover = true; halt(); });
-  sp.addEventListener("focusout", (e) => { if (!sp.contains(e.relatedTarget)) { hover = false; resume(); } });
-  document.addEventListener("visibilitychange", () => (document.hidden ? halt() : resume()));
-  show(0, !reduce);
+    paused ? freeze() : run();
+  };
+  $("spot-prev").addEventListener("click", () => show(i - 1, { manual: true }));
+  $("spot-next").addEventListener("click", () => show(i + 1, { manual: true }));
+  $("spot-play").addEventListener("click", () => { setPaused(true); playGame($("spot-play").dataset.uid); });
+  pauseBtn.addEventListener("click", () => setPaused(!paused));
+  sp.addEventListener("mouseenter", () => { hover = true; freeze(); });
+  sp.addEventListener("mouseleave", () => { hover = false; run(); });
+  sp.addEventListener("focusin", () => { hover = true; freeze(); });
+  sp.addEventListener("focusout", (e) => { if (!sp.contains(e.relatedTarget)) { hover = false; run(); } });
+  document.addEventListener("visibilitychange", () => (document.hidden ? freeze() : run()));
+  new IntersectionObserver(([x]) => { onScreen = x.isIntersecting; onScreen ? run() : freeze(); }, { threshold: 0.2 }).observe(sp);
+  setPaused(paused);
+  show(0);
 }
 
 function renderStats(D) {
@@ -345,7 +357,7 @@ function renderReel(D) {
     rank: (a, b) => a.rank - b.rank,
     date: (a, b) => b.date.localeCompare(a.date) || String(b.time || "").localeCompare(String(a.time || "")),
     gap: (a, b) => b.opp_rating - a.opp_rating,
-    clock: (a, b) => (a.myclk ?? 99) - (b.myclk ?? 99),
+    clock: (a, b) => (a.myclk ?? Infinity) - (b.myclk ?? Infinity),
     short: (a, b) => a.moves - b.moves,
   };
   const draw = () => {
@@ -354,22 +366,26 @@ function renderReel(D) {
     $("reel-grid").innerHTML = list.length ? list.map((g) => gameCard(g, { rank: g.rank })).join("") : `<p class="meta empty">No highlights match those filters.</p>`;
     const collapse = list.length > REEL_SHOW && !st.open;
     $("reel-grid").classList.toggle("collapsed", collapse);
-    $("reel-more").hidden = !collapse;
-    $("reel-more").textContent = `Show all ${list.length} highlights`;
+    $("reel-more").hidden = list.length <= REEL_SHOW;
+    $("reel-more").textContent = st.open ? "Show fewer" : `Show all ${list.length} highlights`;
+    $("reel-more").setAttribute("aria-expanded", String(!collapse));
     $("reel-count").textContent = `${list.length} of ${items.length} highlights${st.sort !== "rank" ? " · " + $("reel-sort").selectedOptions[0].text.toLowerCase() : ""}`;
     hydrateMinis($("reel-grid"));
     if (replay.game) {
       document.querySelectorAll(`[data-card="${CSS.escape(replay.game.uid)}"]`).forEach((c) => c.classList.add("playing"));
       const i = PLAYLIST.indexOf(replay.game.uid);
       $("ti-count").textContent = i >= 0 ? `${i + 1} of ${PLAYLIST.length}` : "";
-      $("ti-prev").disabled = $("ti-next").disabled = i < 0 || PLAYLIST.length < 2;
+      $("ti-prev").disabled = $("ti-next").disabled = !PLAYLIST.length || (i >= 0 && PLAYLIST.length < 2);
     }
   };
   const press = (box, b) => box.querySelectorAll("button").forEach((x) => { x.classList.toggle("on", x === b); x.setAttribute("aria-pressed", String(x === b)); });
   $("reel-filters").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; press($("reel-filters"), b); st.f = b.dataset.f; st.open = false; draw(); });
   $("reel-plat").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; press($("reel-plat"), b); st.plat = b.dataset.p; st.open = false; draw(); });
   $("reel-sort").addEventListener("change", () => { st.sort = $("reel-sort").value; draw(); });
-  $("reel-more").addEventListener("click", () => { st.open = true; $("reel-grid").classList.remove("collapsed"); $("reel-more").hidden = true; });
+  $("reel-more").addEventListener("click", () => {
+    st.open = !st.open; draw();
+    if (!st.open) $("reel-grid").scrollIntoView({ block: "start", behavior: "auto" });
+  });
   $("reel-random").addEventListener("click", () => {
     const pool = PLAYLIST.length ? PLAYLIST : items.map((g) => g.uid);
     const others = pool.filter((u) => u !== replay.game?.uid);
@@ -423,7 +439,7 @@ function renderRatings(D) {
     for (let j = i; j >= 0 && t - Date.parse(pts[j][0]) < TREND_DAYS * 864e5; j--) win.push(pts[j][1]);
     return win.length >= TREND_MIN ? [pt[0], win.reduce((a, b) => a + b, 0) / win.length] : null;
   }).filter(Boolean);
-  let showTrend = true;
+  let showTrend = true, kx = -1;
   $("rating-foot").textContent = `Dashed line: ${TREND_DAYS}-day rolling average of the daily closing ratings (shown once ${TREND_MIN}+ days are in the window). A 500-game moving average isn't possible from the published data, which stores one closing rating per day rather than one per game.`;
   const STY = { "Chess.com bullet": ["#ff3b2f", "", "chesscom_bullet"], "Lichess bullet": ["#f4ead6", "", "lichess_bullet"], "Chess.com blitz": ["#ffd23f", "7 5", "chesscom_blitz"], "Lichess blitz": ["#3fd0c9", "7 5", "lichess_blitz"] };
   const names = Object.keys(R.series).sort((a, b) => Object.keys(STY).indexOf(a) - Object.keys(STY).indexOf(b));
@@ -485,6 +501,7 @@ function renderRatings(D) {
     + `<button type="button" data-trend="1" aria-pressed="true" class="trend-chip"><i></i>${TREND_DAYS}-day trend</button>`;
   $("rating-chips").addEventListener("click", (e) => {
     const b = e.target.closest("button"); if (!b) return;
+    kx = -1;
     if (b.dataset.trend) { showTrend = !showTrend; b.classList.toggle("off", !showTrend); b.setAttribute("aria-pressed", String(showTrend)); draw(); return; }
     const n = b.dataset.s; if (on.has(n) && on.size > 1) on.delete(n); else on.add(n);
     b.classList.toggle("off", !on.has(n)); b.setAttribute("aria-pressed", String(on.has(n))); draw();
@@ -509,7 +526,6 @@ function renderRatings(D) {
   svg.addEventListener("touchmove", (e) => move(e.touches[0].clientX), { passive: true });
   svg.addEventListener("mouseleave", () => { tip.style.opacity = 0; svg.querySelector("#rc-x")?.setAttribute("opacity", 0); });
   // keyboard: step through the days that have a closing rating on any visible line
-  let kx = -1;
   svg.addEventListener("keydown", (e) => {
     const days = [...new Set(names.filter((n) => on.has(n)).flatMap((n) => R.series[n].map((p) => p[0])))].sort();
     if (!days.length || !/^(ArrowLeft|ArrowRight|Home|End)$/.test(e.key)) return;
@@ -539,9 +555,9 @@ function renderMonthly(R, name, color) {
   const lab = (k) => `${MON[+k.slice(5, 7) - 1]}`;
   el.innerHTML = `<h3>Month by month <small>${esc(name)}, net rating change</small></h3>
     <p class="how">Each bar is the month's last closing rating minus the previous month's (the first month counts from its first close). Best month: <b>${lab(best.k)} ${best.d > 0 ? "+" : ""}${best.d}</b>.</p>
-    <div class="mbars" role="list">${rows.map((r) => `<div class="mb${r.k === best.k ? " best" : ""}" role="listitem" aria-label="${lab(r.k)}: ${r.d >= 0 ? "+" : "−"}${Math.abs(r.d)}, closed at ${r.close}">
+    <div class="mbars${rows.some((r) => r.d < 0) ? "" : " noneg"}" role="list">${rows.map((r) => `<div class="mb${r.k === best.k ? " best" : ""}${r.d < 0 ? " neg" : ""}" role="listitem" aria-label="${lab(r.k)}: ${r.d >= 0 ? "+" : "−"}${Math.abs(r.d)}, closed at ${r.close}">
       <span class="mv">${r.d > 0 ? "+" : r.d < 0 ? "−" : ""}${Math.abs(r.d)}</span>
-      <div class="mtrack"><i class="${r.d < 0 ? "neg" : "pos"}" style="--h:${((Math.abs(r.d) / max) * 100).toFixed(1)}%;${r.d >= 0 ? `--c:${color}` : ""}"></i></div>
+      <div class="mtrack"><div class="mhalf mup">${r.d > 0 ? `<i class="pos" style="--h:${((r.d / max) * 100).toFixed(1)}%;--c:${color}"></i>` : ""}</div><div class="mhalf mdn">${r.d < 0 ? `<i class="neg" style="--h:${Math.min(100, (-2 * r.d / max) * 100).toFixed(1)}%"></i>` : ""}</div></div>
       <span class="ml">${lab(r.k)}</span><span class="mc">${r.close}</span></div>`).join("")}</div>`;
 }
 
@@ -576,10 +592,11 @@ function renderHeat(D) {
   $("heat-grid").addEventListener("keydown", (e) => {
     const el = e.target.closest(".c"); if (!el) return;
     let [wd, h] = el.dataset.k.split("-").map(Number);
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); show(el.dataset.k, el); return; }
     const mv = { ArrowLeft: [0, -1], ArrowRight: [0, 1], ArrowUp: [-1, 0], ArrowDown: [1, 0], Home: [0, -h], End: [0, 23 - h] }[e.key];
     if (!mv) return;
     e.preventDefault();
-    wd = (wd + mv[0] + 7) % 7; h = Math.max(0, Math.min(23, h + mv[1]));
+    wd = Math.max(0, Math.min(6, wd + mv[0])); h = Math.max(0, Math.min(23, h + mv[1]));
     const nx = $("heat-grid").querySelector(`[data-k="${wd}-${h}"]`);
     el.tabIndex = -1; nx.tabIndex = 0; nx.focus();
   });

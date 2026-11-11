@@ -103,7 +103,7 @@ export class Replay {
     this.speeds = [0.5, 1, 2]; this.speedIx = 1;
     this.scrub = this.$("scrub");
     this.scrub.addEventListener("input", () => { this.stop(); this.go(+this.scrub.value); });
-    root.querySelectorAll(".controls button[data-act]").forEach((b) => b.addEventListener("click", () => this.act(b.dataset.act)));
+    root.querySelectorAll(".controls button[data-act], .controls2 button[data-act]").forEach((b) => b.addEventListener("click", () => this.act(b.dataset.act)));
     this.$("movelist").addEventListener("click", (e) => { const b = e.target.closest("button[data-p]"); if (b) { this.stop(); this.go(+b.dataset.p); } });
     this.$("moments")?.addEventListener("click", (e) => { const b = e.target.closest("button[data-p]"); if (b) { this.stop(); this.go(+b.dataset.p); } });
     // graphs: press/drag to seek, hover for a readout
@@ -127,11 +127,13 @@ export class Replay {
     }
     // keyboard: only while the theater is on screen
     this.visible = false;
-    new IntersectionObserver((es) => es.forEach((x) => (this.visible = x.isIntersecting)), { threshold: 0.25 }).observe(root);
+    new IntersectionObserver((es) => es.forEach((x) => { this.visible = x.isIntersecting; if (!x.isIntersecting && this.timer) this.stop(); }), { threshold: 0.25 }).observe(root);
+    document.addEventListener("visibilitychange", () => { if (document.hidden && this.timer) this.stop(); });
     document.addEventListener("keydown", (e) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (!this.visible || !this.game || /input|textarea|select/i.test(e.target.tagName) && e.target !== this.scrub) return;
-      if (e.key === " " && e.target.closest?.("button")) return; // a focused button handles its own space press
+      if (e.defaultPrevented) return;
+      if (e.key === " " && e.target.closest?.("button,[role=button],a")) return; // a focused control handles its own space press
       const map = { ArrowLeft: "prev", ArrowRight: "next", Home: "start", End: "end", " ": "play", k: "key", K: "key", "[": "mprev", "]": "mnext", f: "flip", F: "flip" };
       if (map[e.key]) { e.preventDefault(); this.act(map[e.key]); }
     });
@@ -174,6 +176,7 @@ export class Replay {
   play() {
     if (this.p >= this.pos.length - 1) this.go(0);
     this.setPlayIcon(true);
+    this.$("ti-move").setAttribute("aria-live", "off");
     const step = () => {
       if (this.p >= this.pos.length - 1) return this.stop();
       this.go(this.p + 1);
@@ -184,7 +187,7 @@ export class Replay {
     };
     this.timer = setTimeout(step, 120);
   }
-  stop() { clearTimeout(this.timer); this.timer = null; this.setPlayIcon(false); }
+  stop() { clearTimeout(this.timer); this.timer = null; this.setPlayIcon(false); this.$("ti-move")?.setAttribute("aria-live", "polite"); }
   setPlayIcon(on) { const b = this.root.querySelector('[data-act="play"]'); b.textContent = on ? "⏸" : "▶"; b.setAttribute("aria-label", on ? "Pause" : "Play"); }
 
   load(g, { at = "key" } = {}) {
@@ -230,10 +233,12 @@ export class Replay {
     const n = this.pos.length - 1, M = new Map();
     const add = (p, kind, label, why) => { if (p < 1 || p > n || M.has(p)) return; M.set(p, { p, kind, label, why }); };
     const mv = (p) => `${Math.ceil(p / 2)}${p % 2 ? "." : "..."}${this.pos[p].san}`;
+    this.mvLabel = mv;
     add(this.keyPos, "key", `★ ${mv(this.keyPos)}`, "Key moment");
     for (const b of this.brilPlies) add(b + 1, "bril", `${mv(b + 1)}!!`, "Brilliant (Chess.com Game Review)");
     [...this.swings.values()].length && [...this.swings.entries()].sort((a, b) => Math.abs(b[1].d) - Math.abs(a[1].d)).slice(0, 3)
-      .forEach(([p, s]) => add(p, s.d > 0 ? "up" : "down", `${s.d > 0 ? "▲" : "▼"} ${mv(p)}`, `Eval swing ${fmtEval(s.from)} → ${fmtEval(s.to)} for him`));
+      .forEach(([p, s]) => add(p, s.d > 0 ? "up" : "down", `${s.d > 0 ? "▲" : "▼"} ${mv(p)}`,
+        `${s.byHim ? "His move" : "Opponent's move"}: eval ${fmtEval(s.from)} → ${fmtEval(s.to)} for him (${s.d > 0 ? (s.byHim ? "a strong move" : "an opponent slip") : (s.byHim ? "his slip" : "a strong opponent move")})`));
     if (!isNaN(this.base) && this.base >= 30 && (this.game.clk || []).length) {
       for (let p = 1; p <= n; p++) { const t = this.clockAt(this.me, p); if (t != null && t <= 5) { add(p, "clock", `⏱ ${mv(p)}`, `His clock drops to ${fmtClock(t)}`); break; } }
     }
@@ -243,12 +248,12 @@ export class Replay {
 
   renderMoments() {
     const el = this.$("moments"); if (!el) return;
-    el.innerHTML = `<span class="mo-l">Jump to</span>` + this.moments.map((m) => `<button type="button" class="mo mo-${m.kind}" data-p="${m.p}" title="${m.why}">${m.label}</button>`).join("");
+    el.innerHTML = `<span class="mo-l">Jump to</span>` + this.moments.map((m) => `<button type="button" class="mo mo-${m.kind}" data-p="${m.p}" title="${m.why}" aria-label="${m.why}, move ${m.label.replace(/^[^\d]+/, "")}">${m.label}</button>`).join("");
   }
 
   /** One-line readout for the graph hover tooltip. */
   readout(p, what) {
-    const s = this.pos[p], mv = s.san ? `${Math.ceil(p / 2)}${p % 2 ? "." : "..."}${s.san}` : "Start";
+    const s = this.pos[p], mv = s.san ? `${Math.ceil(p / 2)}${p % 2 ? "." : "..."} ${s.san}` : "Start";
     if (what === "eval") { const cp = this.evMe ? (p === 0 ? null : this.evMe[p]) : null; return `${mv} · ${cp == null ? "–" : fmtEval(cp)}`; }
     return `${mv} · him ${fmtClock(this.clockAt(this.me, p))} · opp ${fmtClock(this.clockAt(this.me === "white" ? "black" : "white", p))}`;
   }
@@ -319,7 +324,7 @@ export class Replay {
       const bril = this.brilPlies.has(p - 1) ? "!!" : "";
       const sw = this.swings.get(p);
       const swc = sw ? (sw.d > 0 ? " sw-up" : " sw-dn") : "";
-      const swt = sw ? ` title="Eval ${fmtEval(sw.from)} → ${fmtEval(sw.to)} for him"` : "";
+      const swt = sw ? ` title="${sw.byHim ? "His move" : "Opponent's move"}: eval ${fmtEval(sw.from)} → ${fmtEval(sw.to)} for him"` : "";
       parts.push(`${p % 2 ? "<li>" + num : ""}<button type="button" data-p="${p}" class="${p === this.keyPos ? "key" : ""}${bril ? " bril" : ""}${swc}"${swt}>${this.pos[p].san}${bril}</button>${p % 2 === 0 || p === this.pos.length - 1 ? "</li>" : ""}`);
     }
     ml.innerHTML = parts.join("");
@@ -337,7 +342,7 @@ export class Replay {
     if (this.evMe) {
       const Y = (cp) => H / 2 - (Math.max(-800, Math.min(800, cp ?? 0)) / 800) * (H / 2 - 4);
       let d = `M0 ${H / 2}`;
-      this.evMe.forEach((v, i) => { d += ` L${X(i).toFixed(1)} ${Y(i === 0 ? 20 : v).toFixed(1)}`; });
+      this.evMe.forEach((v, i) => { d += ` L${X(i).toFixed(1)} ${Y(i === 0 ? 20 * (this.me === "white" ? 1 : -1) : v).toFixed(1)}`; });
       const area = `${d} L${W} ${H / 2} Z`;
       ge.innerHTML = `<defs><clipPath id="cpTop"><rect x="0" y="0" width="${W}" height="${H / 2}"/></clipPath><clipPath id="cpBot"><rect x="0" y="${H / 2}" width="${W}" height="${H / 2}"/></clipPath></defs>
         <path d="${area}" fill="#ff3b2f" opacity=".75" clip-path="url(#cpTop)"/><path d="${area}" fill="#3a3f4d" clip-path="url(#cpBot)"/>

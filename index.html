@@ -55,14 +55,14 @@
     </div>
     <div class="tickets" id="hero-tickets"></div>
   </div>
-  <div class="spotlight" id="spotlight" aria-roledescription="carousel" aria-label="Featured victories">
+  <div class="spotlight" id="spotlight" role="region" aria-roledescription="carousel" aria-label="Featured victories">
     <img class="spot-mascot" src="img/lobster-hero.svg" alt="CLAWBERED mascot: a Deco lobster in a fedora and tie, holding a knight beside a chess clock" width="600" height="600">
     <div class="spot-frame">
       <div class="spot-label"><span>Featured victory</span><span id="spot-idx"></span></div>
-      <div class="spot-board" id="hero-board"></div>
+      <div class="spot-board" id="hero-board" role="img" aria-label="Chess board"></div>
       <div class="spot-progress" aria-hidden="true"><i id="spot-prog"></i></div>
     </div>
-    <div class="spot-info" aria-live="polite">
+    <div class="spot-info" aria-live="off">
       <div class="spot-stickers" id="spot-stickers"></div>
       <h2 class="spot-title" id="spot-title">Loading the highlights…</h2>
       <p class="spot-meta" id="spot-meta"></p>
@@ -70,7 +70,7 @@
         <button type="button" class="spot-nav" id="spot-prev" aria-label="Previous featured victory">◀</button>
         <button type="button" class="btn" id="spot-play">▶ Watch the replay</button>
         <button type="button" class="spot-nav" id="spot-next" aria-label="Next featured victory">▶</button>
-        <button type="button" class="spot-nav spot-pause" id="spot-pause" aria-label="Pause the slideshow" aria-pressed="false">❚❚</button>
+        <button type="button" class="spot-nav spot-pause" id="spot-pause" aria-label="Pause the slideshow" aria-pressed="false">Pause</button>
       </div>
     </div>
   </div>
@@ -149,7 +149,7 @@
       <p class="ti-caption" id="ti-caption"></p>
       <div class="ti-move" id="ti-move" aria-live="polite"></div>
       <div class="graphs">
-        <div class="graph"><span class="glabel">Eval (his side) <i class="lg-tick up"></i>swing for him <i class="lg-tick dn"></i>against</span><svg id="g-eval" viewBox="0 0 600 90" preserveAspectRatio="none"></svg></div>
+        <div class="graph"><span class="glabel">Eval (his side) <i class="lg-tick up"></i><span class="lgt">swing for him</span> <i class="lg-tick dn"></i><span class="lgt">against</span></span><svg id="g-eval" viewBox="0 0 600 90" preserveAspectRatio="none"></svg></div>
         <div class="graph"><span class="glabel">Clocks <i class="lg lg-me"></i>him <i class="lg lg-op"></i>opponent</span><svg id="g-clk" viewBox="0 0 600 90" preserveAspectRatio="none"></svg></div>
       </div>
       <ol class="movelist" id="movelist"></ol>
@@ -161,7 +161,7 @@
     <div class="reel-opts">
       <div class="seg" id="reel-plat" role="group" aria-label="Filter by site"><button type="button" class="on" data-p="all" aria-pressed="true">Both sites</button><button type="button" data-p="Chess.com" aria-pressed="false">Chess.com</button><button type="button" data-p="Lichess" aria-pressed="false">Lichess</button></div>
       <label class="sortl">Sort <select id="reel-sort">
-        <option value="rank">Highlight rank</option><option value="date">Newest first</option><option value="gap">Strongest opponent</option><option value="clock">Least time left</option><option value="short">Shortest win</option>
+        <option value="rank">Highlight rank</option><option value="date">Newest first</option><option value="gap">Strongest opponent</option><option value="clock">Least time on his clock</option><option value="short">Shortest win</option>
       </select></label>
       <button type="button" class="btn ghost" id="reel-random">🎲 Surprise me</button>
     </div>
@@ -215,7 +215,7 @@
   <header class="sec-head"><span class="sec-no">Nº 06</span><h2>The Climb</h2><p class="sec-sub" id="rating-note"></p></header>
   <div class="rating-hero" id="rating-hero"></div>
   <div class="chips" id="rating-chips"></div>
-  <div class="chart-wrap"><svg id="rating-chart" viewBox="0 0 1000 440" role="img" tabindex="0" aria-label="Chess.com bullet rating in 2026, with optional Chess.com blitz and Lichess lines. Use the arrow keys to step through the dates."></svg><div class="chart-tip" id="rating-tip" aria-live="polite"></div></div>
+  <div class="chart-wrap"><svg id="rating-chart" viewBox="0 0 1000 440" role="application" aria-roledescription="chart" tabindex="0" aria-label="Chess.com bullet rating in 2026, with optional Chess.com blitz and Lichess lines. Use the arrow keys to step through the dates."></svg><div class="chart-tip" id="rating-tip" aria-live="polite"></div></div>
   <p class="chart-foot" id="rating-foot"></p>
   <div class="monthly panel" id="rating-monthly"></div>
   <div class="climb-cards" id="climb-cards"></div>

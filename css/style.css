@@ -518,7 +518,7 @@ main > section{scroll-margin-top:0} /* offset comes from html scroll-padding-top
 @keyframes rise{from{opacity:0;translate:0 14px}}
 
 .spotlight{position:relative;display:grid;grid-template-columns:minmax(0,1fr);gap:16px;justify-items:center;padding-top:20px}
-.spot-mascot{position:absolute;top:-52px;right:-58px;width:170px;height:auto;z-index:5;filter:drop-shadow(5px 6px 0 rgba(0,0,0,.6));animation:bob 4s ease-in-out infinite;pointer-events:none}
+.spot-mascot{position:absolute;top:-22px;right:-58px;width:170px;height:auto;z-index:5;filter:drop-shadow(5px 6px 0 rgba(0,0,0,.6));animation:bob 4s ease-in-out infinite;pointer-events:none}
 .spot-frame{position:relative;width:min(100%,430px);padding:16px 16px 12px;background:linear-gradient(160deg,#1c2130,#0f1219);border:3px solid #000;border-radius:6px;box-shadow:10px 10px 0 var(--deep)}
 /* Art Deco double rule + stepped corners */
 .spot-frame::before{content:"";position:absolute;inset:6px;border:1.5px solid rgba(255,210,63,.55);border-radius:2px;pointer-events:none;
@@ -534,7 +534,7 @@ main > section{scroll-margin-top:0} /* offset comes from html scroll-padding-top
 .spot-meta{font:12.5px/1.45 var(--mono);color:var(--mute);margin:0 0 12px;min-height:2.9em}
 .spot-actions{display:flex;gap:8px;align-items:center}
 .spot-actions .btn{flex:1;padding:11px 14px}
-.spot-nav{cursor:pointer;width:44px;height:44px;flex:none;border:2px solid #000;border-radius:999px;background:var(--panel);color:var(--ink);font:700 14px var(--body);box-shadow:3px 3px 0 #000}
+.spot-nav{cursor:pointer;min-width:44px;padding:0 10px;height:44px;flex:none;border:2px solid #000;border-radius:999px;background:var(--panel);color:var(--ink);font:700 14px var(--body);box-shadow:3px 3px 0 #000}
 .spot-nav:hover{background:var(--yel);color:#000}
 .spot-stickers{min-height:34px}
 
@@ -566,8 +566,8 @@ main > section{scroll-margin-top:0} /* offset comes from html scroll-padding-top
 .movelist button.sw-dn{box-shadow:inset 0 -3px 0 #ff7b72}
 .lg-tick{display:inline-block;width:3px;height:9px;vertical-align:middle;margin:0 3px 0 8px}
 .lg-tick.up{background:var(--teal)} .lg-tick.dn{background:var(--red)}
-.graph{touch-action:none}
-.gtip{position:absolute;top:4px;left:0;font:700 11px var(--mono);background:var(--paper);color:#000;border:2px solid #000;border-radius:5px;padding:2px 6px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .12s}
+.graph{touch-action:pan-y}
+.gtip{position:absolute;bottom:4px;left:0;font:700 11px var(--mono);background:var(--paper);color:#000;border:2px solid #000;border-radius:5px;padding:2px 6px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .12s}
 .graph.hover .gtip{opacity:1}
 
 /* reel explorer */
@@ -602,9 +602,15 @@ main > section{scroll-margin-top:0} /* offset comes from html scroll-padding-top
 .mbars{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:10px;align-items:end}
 .mb{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0}
 .mb .mv{font:700 12px var(--mono);color:var(--ink)}
-.mtrack{height:120px;width:100%;max-width:56px;display:flex;align-items:flex-end;background:repeating-linear-gradient(0deg,#1d212c 0 1px,transparent 1px 30px);border-bottom:2px solid var(--line)}
-.mtrack i{display:block;width:100%;height:var(--h);min-height:3px;background:var(--c,var(--red));border:2px solid #000;border-bottom:0;border-radius:4px 4px 0 0;transform-origin:bottom;animation:grow .6s cubic-bezier(.2,.8,.2,1) both}
-.mtrack i.neg{background:#3a3f4d;background-image:repeating-linear-gradient(135deg,transparent 0 5px,rgba(255,255,255,.08) 5px 10px)}
+.mb.neg .mv{color:#ff7b72}
+.mtrack{height:150px;width:100%;max-width:56px;display:grid;grid-template-rows:2fr 1fr}
+.mbars.noneg .mtrack{grid-template-rows:1fr 0fr}
+.mhalf{display:flex;min-height:0}
+.mup{align-items:flex-end;border-bottom:2px solid var(--paper)}
+.mdn{align-items:flex-start}
+.mhalf i{display:block;width:100%;height:var(--h);min-height:3px;border:2px solid #000;animation:grow .6s cubic-bezier(.2,.8,.2,1) both}
+.mup i{background:var(--c,var(--red));border-bottom:0;border-radius:4px 4px 0 0;transform-origin:bottom}
+.mdn i{background:#5a6072;background-image:repeating-linear-gradient(135deg,transparent 0 5px,rgba(255,255,255,.12) 5px 10px);border-top:0;border-radius:0 0 4px 4px;transform-origin:top}
 @keyframes grow{from{transform:scaleY(0)}}
 .mb .ml{font:15px/1 var(--display);letter-spacing:.06em;text-transform:uppercase}
 .mb .mc{font:10.5px var(--mono);color:var(--mute)}
@@ -658,3 +664,4 @@ main > section{scroll-margin-top:0} /* offset comes from html scroll-padding-top
   .bm-body>.bm-why{grid-column:1/-1;margin-top:10px}
   .bm-grid{grid-auto-rows:auto}
 }
+@media (max-width:640px){.glabel .lg-tick,.glabel .lgt{display:none}.mtrack{height:110px}}
