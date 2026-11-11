@@ -81,10 +81,15 @@ const wonBy = (t) => (t === "time" || t === "timevsinsufficient" ? "won on time"
 const resultLine = (g) => `as ${g.color} vs ${g.opp} · ${wonBy(g.term)}${g.moves ? ` in ${g.moves}` : ""}`;
 
 let replay;
+// The list that Prev/Next walk through: the reel as currently filtered and sorted, else every highlight.
+let PLAYLIST = [];
 function playGame(uid, scroll = true) {
   const g = REG.get(uid);
   if (!g) return;
   replay.load(g);
+  const i = PLAYLIST.indexOf(uid);
+  $("ti-count").textContent = i >= 0 ? `${i + 1} of ${PLAYLIST.length}` : "";
+  $("ti-prev").disabled = $("ti-next").disabled = !PLAYLIST.length || (i >= 0 && PLAYLIST.length < 2);
   $("ti-title").textContent = g.title || "Highlight";
   $("ti-meta").textContent = `${metaLine(g)} · ${resultLine(g)}${g.opening ? " · " + g.opening : ""}`;
   $("ti-caption").textContent = g.caption || "";
@@ -92,7 +97,30 @@ function playGame(uid, scroll = true) {
   $("ti-src").textContent = g.ev && g.ev.length ? `Eval: ${g.ev_source || "engine"}. Clocks from the game record.` : "No engine eval stored for this game; clocks from the game record.";
   document.querySelectorAll(".gcard.playing").forEach((c) => c.classList.remove("playing"));
   document.querySelectorAll(`[data-card="${CSS.escape(uid)}"]`).forEach((c) => c.classList.add("playing"));
-  if (scroll) $("theater").scrollIntoView({ behavior: "smooth", block: "start" });
+  if (scroll) $("theater").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+}
+function stepPlaylist(d) {
+  if (!replay.game || !PLAYLIST.length) return;
+  const i = PLAYLIST.indexOf(replay.game.uid);
+  // a game from outside the current list (other filter, Upsets, Vault…): step into the list from its start or end
+  const j = i < 0 ? (d > 0 ? 0 : PLAYLIST.length - 1) : (i + d + PLAYLIST.length) % PLAYLIST.length;
+  playGame(PLAYLIST[j], false);
+}
+function shareLink(uid) { const u = new URL(location.href); u.hash = "reel"; u.searchParams.set("g", uid); return u.toString(); }
+function toast(msg) {
+  let t = document.querySelector(".toast");
+  if (!t) { t = document.createElement("div"); t.className = "toast"; t.setAttribute("role", "status"); document.body.appendChild(t); }
+  t.textContent = msg; t.classList.add("on"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("on"), 2200);
+}
+function initTheaterNav() {
+  $("ti-prev").addEventListener("click", () => stepPlaylist(-1));
+  $("ti-next").addEventListener("click", () => stepPlaylist(1));
+  $("ti-link").addEventListener("click", async () => {
+    if (!replay.game) return;
+    const url = shareLink(replay.game.uid);
+    try { await navigator.clipboard.writeText(url); toast("Link copied: it opens straight to this replay"); }
+    catch { prompt("Copy this link:", url); }
+  });
 }
 document.addEventListener("click", (e) => {
   const b = e.target.closest("[data-play]");
@@ -142,23 +170,79 @@ function renderHero(D) {
   $("marquee").innerHTML = html + html;
 }
 
+// Featured-victory spotlight: the top five highlights, each replayed up to its key move, then held.
+// Rotates only while on screen, in a visible tab, not hovered/focused and not paused; resumes where it stopped.
+const SPOT_N = 5, SPOT_LEAD = 12, SPOT_STEP = 480, SPOT_HOLD = 3800;
 function heroBoard(D) {
-  const hl = (D.highlights?.items || [])[0];
-  if (!hl) { $("hero-board-cap").textContent = ""; return; }
-  const g = REG.get(hl.id) || register(hl);
-  const pos = buildPositions(g.san);
-  const k = Math.min(pos.length - 1, g.key_ply != null ? g.key_ply + 1 : pos.length - 1);
-  const cg = miniBoard($("hero-board"), pos[0].fen, g.color === "Black" ? "black" : "white");
-  $("hero-board-cap").innerHTML = `#1 · ${esc(g.title)} · ${esc(g.opp)}<br><a href="#reel" data-play="${esc(g.uid)}" style="color:inherit">▶ watch it</a>`;
-  let p = 0;
+  const items = (D.highlights?.items || []).slice().sort((a, b) => a.rank - b.rank).slice(0, SPOT_N).map((h) => REG.get(h.id)).filter((g) => g && g.san?.length);
+  if (!items.length) { $("spotlight").hidden = true; return; }
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (reduce) { cg.set({ fen: pos[k].fen, lastMove: pos[k].lastMove }); return; }
-  const tick = () => {
-    p = p >= k ? 0 : p + 1;
-    cg.set({ fen: pos[p].fen, lastMove: pos[p].lastMove, check: pos[p].check ? pos[p].turn : false, turnColor: pos[p].turn });
-    setTimeout(tick, p === k ? 2600 : p === 0 ? 900 : 520);
+  const games = items.map((g) => {
+    const pos = buildPositions(g.san), key = Math.min(pos.length - 1, g.key_ply != null ? g.key_ply + 1 : pos.length - 1);
+    return { g, pos, key, start: Math.max(0, key - SPOT_LEAD) };
+  });
+  const sp = $("spotlight"), info = sp.querySelector(".spot-info"), boardEl = $("hero-board");
+  const cg = miniBoard(boardEl, games[0].pos[0].fen, "white");
+  cg.set({ drawable: { enabled: false, visible: true } });
+  let i = 0, p = 0, timer = null, paused = reduce, hover = false, onScreen = true;
+  const prog = $("spot-prog"), pauseBtn = $("spot-pause");
+  const running = () => !paused && !hover && onScreen && !document.hidden;
+  const mvName = (G, k) => (k ? `${Math.ceil(k / 2)}${k % 2 ? "." : "..."} ${G.pos[k].san}` : "the start");
+  const setPos = (G, k) => {
+    const s = G.pos[k];
+    cg.set({ fen: s.fen, lastMove: s.lastMove, check: s.check ? s.turn : false, turnColor: s.turn });
+    cg.setAutoShapes(k === G.key && s.lastMove ? [{ orig: s.lastMove[0], dest: s.lastMove[1], brush: "red" }] : []);
+    boardEl.setAttribute("aria-label", `Board after ${mvName(G, k)}${k === G.key ? ", the key move" : ""}`);
   };
-  setTimeout(tick, 900);
+  const barTo = (frac, ms) => { prog.style.transition = "none"; prog.style.width = `${frac * 100}%`; void prog.offsetWidth; if (ms) { prog.style.transition = `width ${ms}ms linear`; prog.style.width = "100%"; } };
+  const remaining = (G) => (G.key - p) * SPOT_STEP + (p === G.key ? SPOT_HOLD : SPOT_HOLD);
+  const total = (G) => (G.key - G.start) * SPOT_STEP + SPOT_HOLD;
+  const tick = () => {
+    const G = games[i];
+    if (!running()) return;
+    if (p < G.key) { p++; setPos(G, p); timer = setTimeout(tick, p === G.key ? SPOT_HOLD : SPOT_STEP); }
+    else show(i + 1);
+  };
+  const run = () => { clearTimeout(timer); if (!running()) return; const G = games[i]; barTo(1 - remaining(G) / total(G), remaining(G)); timer = setTimeout(tick, p === G.key ? SPOT_HOLD : SPOT_STEP); };
+  const freeze = () => { clearTimeout(timer); timer = null; const w = getComputedStyle(prog).width, W = prog.parentElement.clientWidth; prog.style.transition = "none"; prog.style.width = W ? `${(100 * parseFloat(w)) / W}%` : "0%"; };
+  function show(n, { manual = false } = {}) {
+    clearTimeout(timer);
+    i = (n + games.length) % games.length;
+    const G = games[i], g = G.g;
+    info.setAttribute("aria-live", manual ? "polite" : "off"); // announce only changes the visitor asked for
+    cg.set({ orientation: g.color === "Black" ? "black" : "white", animation: { enabled: false } });
+    $("spot-idx").textContent = `${i + 1} / ${games.length}`;
+    $("spot-title").textContent = g.title || "Highlight";
+    $("spot-meta").textContent = `${g.plat} · ${g.tc} · ${fmtDate(g.date)} · beat ${g.opp} · ${wonBy(g.term)} in ${g.moves}`;
+    $("spot-stickers").innerHTML = (g.stickers || []).slice(0, 3).map((x) => `<span class="chip${/BRILLIANT/.test(x) ? " bril" : ""}">${esc(x)}</span>`).join("");
+    $("spot-play").dataset.uid = g.uid;
+    $("spot-play").setAttribute("aria-label", `Watch the replay: ${g.title || "highlight"}`);
+    // static (paused / reduced motion / manual while held): show the key move; otherwise replay the lead-in
+    p = running() ? G.start : G.key;
+    setPos(G, p);
+    cg.set({ animation: { enabled: true, duration: 220 } });
+    barTo(0, 0);
+    run();
+  }
+  const setPaused = (v) => {
+    paused = v;
+    pauseBtn.setAttribute("aria-pressed", String(paused));
+    pauseBtn.textContent = paused ? "Play" : "Pause";
+    pauseBtn.setAttribute("aria-label", paused ? "Resume the slideshow" : "Pause the slideshow");
+    paused ? freeze() : run();
+  };
+  $("spot-prev").addEventListener("click", () => show(i - 1, { manual: true }));
+  $("spot-next").addEventListener("click", () => show(i + 1, { manual: true }));
+  $("spot-play").addEventListener("click", () => { setPaused(true); playGame($("spot-play").dataset.uid); });
+  pauseBtn.addEventListener("click", () => setPaused(!paused));
+  sp.addEventListener("mouseenter", () => { hover = true; freeze(); });
+  sp.addEventListener("mouseleave", () => { hover = false; run(); });
+  sp.addEventListener("focusin", () => { hover = true; freeze(); });
+  sp.addEventListener("focusout", (e) => { if (!sp.contains(e.relatedTarget)) { hover = false; run(); } });
+  document.addEventListener("visibilitychange", () => (document.hidden ? freeze() : run()));
+  new IntersectionObserver(([x]) => { onScreen = x.isIntersecting; onScreen ? run() : freeze(); }, { threshold: 0.2 }).observe(sp);
+  setPaused(paused);
+  show(0);
 }
 
 function renderStats(D) {
@@ -178,17 +262,17 @@ function renderStats(D) {
   $("formats").innerHTML = s.formats.filter((f) => f.games > 0).map((f) => {
     const w = (100 * f.W) / f.games, d = (100 * f.D) / f.games, l = (100 * f.L) / f.games;
     return `<div class="fmt-row"><div class="nm"><b>${esc(f.plat)}</b><span>${esc(f.tclass)} · ${nf(f.games)} games</span></div>
-      <div class="wdl" title="${f.W} W · ${f.D} D · ${f.L} L"><i class="w" style="width:${w}%"></i><i class="d" style="width:${d}%"></i><i class="l" style="width:${l}%"></i></div>
+      <div class="wdl" role="img" aria-label="${f.W} wins, ${f.D} draws, ${f.L} losses" title="${f.W} W · ${f.D} D · ${f.L} L"><i class="w" style="width:${w}%"></i><i class="d" style="width:${d}%"></i><i class="l" style="width:${l}%"></i></div>
       <div class="sc">${f.score}%</div></div>`;
-  }).join("") + `<div class="legend"><span><i style="background:var(--red)"></i>wins</span><span><i style="background:#777"></i>draws</span><span><i style="background:#3a3f4d"></i>the rest</span><span>score = W + ½D</span></div>`;
+  }).join("") + `<div class="legend"><span><i style="background:var(--red)"></i>wins</span><span><i style="background:#777"></i>draws</span><span><i style="background:#3a3f4d"></i>losses</span><span>score = W + ½D</span></div>`;
 
   // donut
   const wb = s.wins_by, keys = [["time", "On time", "#ff3b2f"], ["mate", "Checkmate", "#ffd23f"], ["resign", "Resignation", "#f4ead6"], ["abandon", "Abandoned", "#3fd0c9"]];
   const tot = keys.reduce((a, [k]) => a + (wb[k] || 0), 0);
   let acc = 0; const R = 54, C = 2 * Math.PI * R;
   const arcs = keys.map(([k, , c]) => { const f = (wb[k] || 0) / tot; const seg = `<circle r="${R}" cx="75" cy="75" fill="none" stroke="${c}" stroke-width="26" stroke-dasharray="${f * C} ${C}" stroke-dashoffset="${-acc * C}" transform="rotate(-90 75 75)"/>`; acc += f; return seg; }).join("");
-  $("winsby").innerHTML = `<div class="donut-wrap"><svg class="donut" viewBox="0 0 150 150">${arcs}<circle r="41" cx="75" cy="75" fill="#171b25"/><text x="75" y="72" text-anchor="middle" fill="#f4ead6" font-family="Anton,Impact" font-size="28">${nf(tot)}</text><text x="75" y="90" text-anchor="middle" fill="#9aa0ad" font-size="11" font-family="Grotesk,sans-serif">WINS</text></svg>
-    <div class="donut-legend">${keys.map(([k, n, c]) => `<div><span><i style="background:${c}"></i>${n}</span><b>${nf(wb[k] || 0)}</b></div>`).join("")}</div></div>`;
+  $("winsby").innerHTML = `<div class="donut-wrap"><svg class="donut" viewBox="0 0 150 150" role="img" aria-label="${keys.map(([k, n]) => `${n}: ${wb[k] || 0}`).join(", ")}">${arcs}<circle r="41" cx="75" cy="75" fill="#171b25"/><text x="75" y="72" text-anchor="middle" fill="#f4ead6" font-family="Anton,Impact" font-size="28">${nf(tot)}</text><text x="75" y="90" text-anchor="middle" fill="#9aa0ad" font-size="11" font-family="Grotesk,sans-serif">WINS</text></svg>
+    <div class="donut-legend">${keys.map(([k, n, c]) => `<div><span><i style="background:${c}"></i>${n}</span><b>${nf(wb[k] || 0)} <small>${tot ? Math.round((100 * (wb[k] || 0)) / tot) : 0}%</small></b></div>`).join("")}</div></div>`;
 
   const P = s.peaks;
   $("peaks").innerHTML = ["chesscom_bullet", "lichess_bullet", "chesscom_blitz", "lichess_blitz"].filter((k) => P[k]).map((k) => {
@@ -260,27 +344,55 @@ function renderGOTW(D) {
     : "Provisional: the official picks haven't landed yet, so these are auto-picked from the highest-scoring highlights in each window. They switch to the official picks as soon as games_of_period.json has them.";
 }
 
+const REEL_SHOW = 8;
 function renderReel(D) {
-  const items = (D.highlights?.items || []).map((h) => REG.get(h.id));
+  const items = (D.highlights?.items || []).map((h) => REG.get(h.id)).filter(Boolean);
   $("reel-method").textContent = D.highlights?.method || "";
   const cats = [...new Set(items.map((g) => g.category))];
   const NAMES = { upset: "Upsets", swindle: "Escapes", fast_mate: "Fast mates", low_clock: "Low clock", comeback: "Comebacks", pretty_mate: "Pretty mates", sacrifice: "Sacrifices", swing: "Pounces" };
-  $("reel-filters").innerHTML = `<button class="on" data-f="all">All ${items.length}</button>` + cats.map((c) => `<button data-f="${esc(c)}">${esc(NAMES[c] || c)}</button>`).join("");
-  const draw = (f) => {
-    const list = items.filter((g) => f === "all" || g.category === f);
-    $("reel-grid").innerHTML = list.map((g) => gameCard(g, { rank: g.rank })).join("");
-    $("reel-grid").classList.toggle("collapsed", list.length > 6);
-    $("reel-more").hidden = list.length <= 6;
-    $("reel-more").textContent = `Show all ${list.length} highlights`;
-    hydrateMinis($("reel-grid"));
-    if (replay.game) document.querySelectorAll(`[data-card="${CSS.escape(replay.game.uid)}"]`).forEach((c) => c.classList.add("playing"));
+  const count = (c) => items.filter((g) => g.category === c).length;
+  $("reel-filters").innerHTML = `<button type="button" class="on" aria-pressed="true" data-f="all">All ${items.length}</button>` + cats.map((c) => `<button type="button" aria-pressed="false" data-f="${esc(c)}">${esc(NAMES[c] || c)} <small>${count(c)}</small></button>`).join("");
+  const st = { f: "all", plat: "all", sort: "rank", open: false };
+  const SORTS = {
+    rank: (a, b) => a.rank - b.rank,
+    date: (a, b) => b.date.localeCompare(a.date) || String(b.time || "").localeCompare(String(a.time || "")),
+    gap: (a, b) => b.opp_rating - a.opp_rating,
+    clock: (a, b) => (a.myclk ?? Infinity) - (b.myclk ?? Infinity),
+    short: (a, b) => a.moves - b.moves,
   };
-  $("reel-filters").addEventListener("click", (e) => {
-    const b = e.target.closest("button"); if (!b) return;
-    $("reel-filters").querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b)); draw(b.dataset.f);
+  const draw = () => {
+    const list = items.filter((g) => (st.f === "all" || g.category === st.f) && (st.plat === "all" || g.plat === st.plat)).sort(SORTS[st.sort]);
+    PLAYLIST = list.map((g) => g.uid);
+    $("reel-grid").innerHTML = list.length ? list.map((g) => gameCard(g, { rank: g.rank })).join("") : `<p class="meta empty">No highlights match those filters.</p>`;
+    const collapse = list.length > REEL_SHOW && !st.open;
+    $("reel-grid").classList.toggle("collapsed", collapse);
+    $("reel-more").hidden = list.length <= REEL_SHOW;
+    $("reel-more").textContent = st.open ? "Show fewer" : `Show all ${list.length} highlights`;
+    $("reel-more").setAttribute("aria-expanded", String(!collapse));
+    $("reel-count").textContent = `${list.length} of ${items.length} highlights${st.sort !== "rank" ? " · " + $("reel-sort").selectedOptions[0].text.toLowerCase() : ""}`;
+    hydrateMinis($("reel-grid"));
+    if (replay.game) {
+      document.querySelectorAll(`[data-card="${CSS.escape(replay.game.uid)}"]`).forEach((c) => c.classList.add("playing"));
+      const i = PLAYLIST.indexOf(replay.game.uid);
+      $("ti-count").textContent = i >= 0 ? `${i + 1} of ${PLAYLIST.length}` : "";
+      $("ti-prev").disabled = $("ti-next").disabled = !PLAYLIST.length || (i >= 0 && PLAYLIST.length < 2);
+    }
+  };
+  const press = (box, b) => box.querySelectorAll("button").forEach((x) => { x.classList.toggle("on", x === b); x.setAttribute("aria-pressed", String(x === b)); });
+  $("reel-filters").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; press($("reel-filters"), b); st.f = b.dataset.f; st.open = false; draw(); });
+  $("reel-plat").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; press($("reel-plat"), b); st.plat = b.dataset.p; st.open = false; draw(); });
+  $("reel-sort").addEventListener("change", () => { st.sort = $("reel-sort").value; draw(); });
+  $("reel-more").addEventListener("click", () => {
+    st.open = !st.open; draw();
+    if (!st.open) $("reel-grid").scrollIntoView({ block: "start", behavior: "auto" });
   });
-  $("reel-more").addEventListener("click", () => { $("reel-grid").classList.remove("collapsed"); $("reel-more").hidden = true; });
-  draw("all");
+  $("reel-random").addEventListener("click", () => {
+    const pool = PLAYLIST.length ? PLAYLIST : items.map((g) => g.uid);
+    const others = pool.filter((u) => u !== replay.game?.uid);
+    const pick = (others.length ? others : pool)[Math.floor(Math.random() * (others.length || pool.length))];
+    if (pick) playGame(pick);
+  });
+  draw();
   if (items[0]) playGame(items[0].uid, false);
 }
 
@@ -300,7 +412,7 @@ function renderChaos(D) {
   };
   $("wall-lowest").innerHTML = c.lowest.map((g) => poster(REG.get(g._uid), "clock")).join("");
   $("wall-minus3").innerHTML = c.minus3.map((g) => poster(REG.get(g._uid), "minus3")).join("");
-  document.querySelectorAll(".poster").forEach((p) => p.addEventListener("keydown", (e) => { if (e.key === "Enter") playGame(p.dataset.play); }));
+  document.querySelectorAll(".poster").forEach((p) => p.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); playGame(p.dataset.play); } }));
 }
 
 function renderOpenings(D) {
@@ -319,6 +431,16 @@ function renderRatings(D) {
   const CB = R.peaks?.chesscom_bullet;
   if (CB) $("rating-hero").innerHTML = `<div class="rh-l"><span class="rh-k">Chess.com bullet · 2026</span><span class="rh-v">${CB.first} <i>→</i> <b>${CB.current}</b></span></div><div class="rh-badges"><span class="chip">+${CB.current - CB.first} THIS YEAR</span><span class="chip">${nf(CB.games)} GAMES</span></div>`;
   $("rating-note").textContent = `${R.note} Chess.com and Lichess use different rating pools, so the lines aren't directly comparable. Chess.com bullet is shown by default; tap the chips to add the others.`;
+  // Trend: trailing 30-day mean of the daily closing ratings (needs 3+ closes in the window).
+  // A 500-game moving average would need one rating per game; the published timeline has one closing rating per day played.
+  const TREND_DAYS = 30, TREND_MIN = 3;
+  const trendOf = (pts) => pts.map((pt, i) => {
+    const t = Date.parse(pt[0]), win = [];
+    for (let j = i; j >= 0 && t - Date.parse(pts[j][0]) < TREND_DAYS * 864e5; j--) win.push(pts[j][1]);
+    return win.length >= TREND_MIN ? [pt[0], win.reduce((a, b) => a + b, 0) / win.length] : null;
+  }).filter(Boolean);
+  let showTrend = true, kx = -1;
+  $("rating-foot").textContent = `Dashed line: ${TREND_DAYS}-day rolling average of the daily closing ratings (shown once ${TREND_MIN}+ days are in the window). A 500-game moving average isn't possible from the published data, which stores one closing rating per day rather than one per game.`;
   const STY = { "Chess.com bullet": ["#ff3b2f", "", "chesscom_bullet"], "Lichess bullet": ["#f4ead6", "", "lichess_bullet"], "Chess.com blitz": ["#ffd23f", "7 5", "chesscom_blitz"], "Lichess blitz": ["#3fd0c9", "7 5", "lichess_blitz"] };
   const names = Object.keys(R.series).sort((a, b) => Object.keys(STY).indexOf(a) - Object.keys(STY).indexOf(b));
   // Chess.com bullet is the featured line; the others are optional, secondary toggles (off by default).
@@ -366,37 +488,77 @@ function renderRatings(D) {
       const last = pts[pts.length - 1];
       if (!(svg._skipLast && svg._skipLast.has(n))) g += `<text x="${X(last[0]) + 8}" y="${Y(last[1]) + 4}" fill="${c}" font-size="${13 * fs}" font-family="Mono,monospace" font-weight="700">${last[1]}</text>`;
     }
+    if (showTrend) for (const n of vis) {
+      const tr = trendOf(R.series[n]); if (tr.length < 2) continue;
+      const c = (STY[n] || ["#aaa"])[0];
+      g += `<path class="rtrend" d="${tr.map((p, i) => `${i ? "L" : "M"}${X(p[0]).toFixed(1)} ${Y(p[1]).toFixed(1)}`).join(" ")}" fill="none" stroke="${n === FEATURED ? "#f4ead6" : c}" stroke-width="${n === FEATURED ? 2.2 : 1.6}" stroke-dasharray="2 6" stroke-linecap="round" opacity=".9"/>`;
+    }
     g += `<line id="rc-x" x1="0" x2="0" y1="${m.t}" y2="${H - m.b}" stroke="#f4ead6" stroke-dasharray="3 3" opacity="0"/>`;
     svg.innerHTML = g;
     svg._Y = Y;
   };
-  $("rating-chips").innerHTML = `<span class="chips-l">Add lines:</span>` + names.map((n) => `<button data-s="${esc(n)}" class="${on.has(n) ? "" : "off"}"><i style="background:${STY[n]?.[0] || "#aaa"}"></i>${esc(n)}</button>`).join("");
+  $("rating-chips").innerHTML = `<span class="chips-l">Add lines:</span>` + names.map((n) => `<button type="button" data-s="${esc(n)}" aria-pressed="${on.has(n)}" class="${on.has(n) ? "" : "off"}"><i style="background:${STY[n]?.[0] || "#aaa"}"></i>${esc(n)}</button>`).join("")
+    + `<button type="button" data-trend="1" aria-pressed="true" class="trend-chip"><i></i>${TREND_DAYS}-day trend</button>`;
   $("rating-chips").addEventListener("click", (e) => {
     const b = e.target.closest("button"); if (!b) return;
+    kx = -1;
+    if (b.dataset.trend) { showTrend = !showTrend; b.classList.toggle("off", !showTrend); b.setAttribute("aria-pressed", String(showTrend)); draw(); return; }
     const n = b.dataset.s; if (on.has(n) && on.size > 1) on.delete(n); else on.add(n);
-    b.classList.toggle("off", !on.has(n)); draw();
+    b.classList.toggle("off", !on.has(n)); b.setAttribute("aria-pressed", String(on.has(n))); draw();
   });
   const move = (clientX) => {
     const r = svg.getBoundingClientRect();
-    const x = ((clientX - r.left) / r.width) * W;
+    showAt(((clientX - r.left) / r.width) * W);
+  };
+  const showAt = (x) => {
+    const r = svg.getBoundingClientRect();
     if (x < m.l || x > W - m.r) { tip.style.opacity = 0; return; }
     const t = t0 + ((x - m.l) / (W - m.l - m.r)) * (t1 - t0);
     const iso = new Date(t).toISOString().slice(0, 10);
     const rows = names.filter((n) => on.has(n)).map((n) => { const pts = R.series[n]; let v = null; for (const p of pts) { if (p[0] <= iso) v = p; else break; } return v ? `<div><b style="color:${STY[n][0] === "#f4ead6" ? "#000" : STY[n][0]}">■</b> ${esc(n)}: <b>${v[1]}</b></div>` : ""; }).join("");
     tip.innerHTML = `<b>${fmtDate(iso)}</b>${rows}`;
     tip.style.opacity = 1;
-    const px = clientX - r.left;
+    const px = (x / W) * r.width;
     tip.style.left = Math.min(r.width - 200, Math.max(0, px + 14)) + "px"; tip.style.top = "16px";
     const l = svg.querySelector("#rc-x"); l.setAttribute("x1", x); l.setAttribute("x2", x); l.setAttribute("opacity", ".6");
   };
   svg.addEventListener("mousemove", (e) => move(e.clientX));
   svg.addEventListener("touchmove", (e) => move(e.touches[0].clientX), { passive: true });
   svg.addEventListener("mouseleave", () => { tip.style.opacity = 0; svg.querySelector("#rc-x")?.setAttribute("opacity", 0); });
+  // keyboard: step through the days that have a closing rating on any visible line
+  svg.addEventListener("keydown", (e) => {
+    const days = [...new Set(names.filter((n) => on.has(n)).flatMap((n) => R.series[n].map((p) => p[0])))].sort();
+    if (!days.length || !/^(ArrowLeft|ArrowRight|Home|End)$/.test(e.key)) return;
+    e.preventDefault();
+    kx = e.key === "Home" ? 0 : e.key === "End" ? days.length - 1 : Math.max(0, Math.min(days.length - 1, (kx < 0 ? days.length : kx) + (e.key === "ArrowRight" ? 1 : -1)));
+    showAt(X(days[kx]));
+  });
+  svg.addEventListener("blur", () => { tip.style.opacity = 0; svg.querySelector("#rc-x")?.setAttribute("opacity", 0); });
   draw();
+  renderMonthly(R, FEATURED, STY[FEATURED]?.[0] || "#ff3b2f");
   $("climb-cards").innerHTML = Object.entries(STY).filter(([n, s]) => R.peaks?.[s[2]]).map(([n, s]) => {
     const p = R.peaks[s[2]], d = p.current - p.first;
     return `<div class="climb" style="--c:${s[0]}"><div class="t">${esc(n)}</div><div class="v">${p.current}</div><div class="s">started 2026 at ${p.first} · 2026 peak ${p.peak}</div>${d > 0 ? `<div class="up">▲ +${d} this year</div>` : `<div class="up">2026 peak ${p.peak} on ${fmtDate(p.date)}</div>`}</div>`;
   }).join("");
+}
+
+// Month-by-month net change of the featured line: last closing rating of each month minus the previous month's last close
+// (the first month is measured from its first close). Pure arithmetic on rating_timeline.json.
+function renderMonthly(R, name, color) {
+  const pts = R.series?.[name], el = $("rating-monthly");
+  if (!pts || pts.length < 2) { el.hidden = true; return; }
+  const byM = new Map();
+  for (const [d, v] of pts) { const k = d.slice(0, 7); if (!byM.has(k)) byM.set(k, { first: v, last: v, days: 0 }); const o = byM.get(k); o.last = v; o.days++; }
+  let prev = null;
+  const rows = [...byM.entries()].map(([k, o]) => { const d = o.last - (prev ?? o.first); prev = o.last; return { k, d, close: o.last, days: o.days }; });
+  const best = rows.reduce((a, b) => (b.d > a.d ? b : a)), max = Math.max(...rows.map((r) => Math.abs(r.d)), 1);
+  const lab = (k) => `${MON[+k.slice(5, 7) - 1]}`;
+  el.innerHTML = `<h3>Month by month <small>${esc(name)}, net rating change</small></h3>
+    <p class="how">Each bar is the month's last closing rating minus the previous month's (the first month counts from its first close). Best month: <b>${lab(best.k)} ${best.d > 0 ? "+" : ""}${best.d}</b>.</p>
+    <div class="mbars${rows.some((r) => r.d < 0) ? "" : " noneg"}" role="list">${rows.map((r) => `<div class="mb${r.k === best.k ? " best" : ""}${r.d < 0 ? " neg" : ""}" role="listitem" aria-label="${lab(r.k)}: ${r.d >= 0 ? "+" : "−"}${Math.abs(r.d)}, closed at ${r.close}">
+      <span class="mv">${r.d > 0 ? "+" : r.d < 0 ? "−" : ""}${Math.abs(r.d)}</span>
+      <div class="mtrack"><div class="mhalf mup">${r.d > 0 ? `<i class="pos" style="--h:${((r.d / max) * 100).toFixed(1)}%;--c:${color}"></i>` : ""}</div><div class="mhalf mdn">${r.d < 0 ? `<i class="neg" style="--h:${Math.min(100, (-2 * r.d / max) * 100).toFixed(1)}%"></i>` : ""}</div></div>
+      <span class="ml">${lab(r.k)}</span><span class="mc">${r.close}</span></div>`).join("")}</div>`;
 }
 
 function renderHeat(D) {
@@ -412,7 +574,8 @@ function renderHeat(D) {
       const c = cell.get(`${wd}-${h}`);
       const t = c ? c.wins / maxW : 0;
       const bg = c ? `rgba(255,59,47,${(0.1 + 0.9 * Math.pow(t, 0.8)).toFixed(3)})` : "";
-      html += `<div class="c ${best.has(`${wd}-${h}`) ? "best" : ""}" data-k="${wd}-${h}" style="${bg ? "background:" + bg : ""}" title="${DAYS[wd]} ${hr12(h)} ET: ${c ? `${c.wins} wins / ${c.games} games (${c.score}%)` : "no games"}"></div>`;
+      const desc = `${DAYS[wd]} ${hr12(h)} ET: ${c ? `${c.wins} wins from ${c.games} games, ${c.score}% score` : "no games"}${best.has(`${wd}-${h}`) ? ", one of the best slots" : ""}`;
+      html += `<div class="c ${best.has(`${wd}-${h}`) ? "best" : ""}" data-k="${wd}-${h}" role="button" tabindex="${wd === 0 && h === 0 ? 0 : -1}" aria-label="${desc}" style="${bg ? "background:" + bg : ""}" title="${desc}"></div>`;
     }
   }
   $("heat-grid").innerHTML = html;
@@ -425,6 +588,18 @@ function renderHeat(D) {
   };
   $("heat-grid").addEventListener("mouseover", (e) => { const el = e.target.closest(".c"); if (el) show(el.dataset.k, el); });
   $("heat-grid").addEventListener("click", (e) => { const el = e.target.closest(".c"); if (el) show(el.dataset.k, el); });
+  $("heat-grid").addEventListener("focusin", (e) => { const el = e.target.closest(".c"); if (el) show(el.dataset.k, el); });
+  $("heat-grid").addEventListener("keydown", (e) => {
+    const el = e.target.closest(".c"); if (!el) return;
+    let [wd, h] = el.dataset.k.split("-").map(Number);
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); show(el.dataset.k, el); return; }
+    const mv = { ArrowLeft: [0, -1], ArrowRight: [0, 1], ArrowUp: [-1, 0], ArrowDown: [1, 0], Home: [0, -h], End: [0, 23 - h] }[e.key];
+    if (!mv) return;
+    e.preventDefault();
+    wd = Math.max(0, Math.min(6, wd + mv[0])); h = Math.max(0, Math.min(23, h + mv[1]));
+    const nx = $("heat-grid").querySelector(`[data-k="${wd}-${h}"]`);
+    el.tabIndex = -1; nx.tabIndex = 0; nx.focus();
+  });
   $("heat-best").innerHTML = (H.best || []).map((c) => `<div class="hb"><b>${DAYS[c.wd].toUpperCase()} ${hr12(c.hr).toUpperCase()}</b>${c.wins} wins · ${c.score}% score</div>`).join("");
 }
 
@@ -695,6 +870,28 @@ function initAnchors() {
   if (location.hash.length > 1) holdAnchor(decodeURIComponent(location.hash.slice(1)));
 }
 
+// Scroll-spy: highlight the nav link for the section being read, and keep it scrolled into view on phones.
+function initScrollSpy() {
+  const links = new Map([...document.querySelectorAll(".nav a[href^='#']")].map((a) => [a.getAttribute("href").slice(1), a]));
+  const secs = [...links.keys()].map((id) => document.getElementById(id)).filter(Boolean);
+  let cur = null;
+  const set = (id) => {
+    if (id === cur) return; cur = id;
+    links.forEach((a, k) => { const on = k === id; a.classList.toggle("on", on); on ? a.setAttribute("aria-current", "true") : a.removeAttribute("aria-current"); });
+    const a = links.get(id), nav = a?.parentElement;
+    if (a && nav && nav.scrollWidth > nav.clientWidth) nav.scrollTo({ left: a.offsetLeft - nav.clientWidth / 2 + a.offsetWidth / 2, behavior: "smooth" });
+  };
+  const pick = () => {
+    const line = navOffset() + innerHeight * 0.25;
+    let id = null;
+    for (const s of secs) { if (s.offsetParent === null) continue; if (s.getBoundingClientRect().top <= line) id = s.id; }
+    set(id);
+  };
+  let raf = 0;
+  addEventListener("scroll", () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(pick); }, { passive: true });
+  pick();
+}
+
 function registerAll(D) {
   // highlights first (richest: title, stickers, evals)
   for (const h of D.highlights?.items || []) register(h);
@@ -726,6 +923,7 @@ function registerAll(D) {
 
 async function main() {
   replay = new Replay($("theater"));
+  initTheaterNav();
   let D;
   try { D = await loadAll(); }
   catch (e) { console.error(e); $("hero-tickets").innerHTML = `<div class="ticket"><div class="l">Data not found</div><div class="s">${esc(e.message)}</div></div>`; return; }
@@ -739,7 +937,11 @@ async function main() {
   const sample = Object.values(D).some((v) => v && typeof v === "object" && v.SAMPLE);
   $("foot-data").textContent = `Data: ${D._base}${sample ? " (SAMPLE DATA)" : ""} · last games: Chess.com ${s?.last_game?.chesscom || "?"}, Lichess ${s?.last_game?.lichess || "?"}`;
   document.documentElement.dataset.ready = "1";
+  // deep link to a replay: ?g=<game id>#reel
+  const want = new URLSearchParams(location.search).get("g");
+  if (want && REG.has(want)) { playGame(want, false); if (!location.hash) location.hash = "reel"; }
   initAnchors();
+  initScrollSpy();
 }
 main();
 

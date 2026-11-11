@@ -6,6 +6,22 @@
 <title>CLAWBERED · 2026 bullet chess highlights</title>
 <meta name="description" content="CLAWBERED: 2026 bullet chess highlights from Chess.com LobsterRomeo and Lichess QuiteQuickly. Flag wins, comebacks, upsets.">
 <meta name="theme-color" content="#0b0d12">
+<link rel="canonical" href="https://dennisonromeo-commits.github.io/clawbered/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="CLAWBERED">
+<meta property="og:title" content="CLAWBERED · 2026 bullet chess highlights">
+<meta property="og:description" content="Flag wins, comebacks, upsets and brilliancies from a year of one-minute chess. Replay every highlight move by move.">
+<meta property="og:url" content="https://dennisonromeo-commits.github.io/clawbered/">
+<meta property="og:image" content="https://dennisonromeo-commits.github.io/clawbered/img/og-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="CLAWBERED logotype with the Deco lobster mascot">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preload" href="vendor/fonts/anton-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="vendor/fonts/space-grotesk-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="modulepreload" href="js/replay.js">
+<link rel="modulepreload" href="vendor/chessground/chessground.min.js">
+<link rel="modulepreload" href="vendor/chessjs/chess.js">
 <link rel="icon" href="img/lobster-favicon.svg" type="image/svg+xml">
 <link rel="icon" href="img/favicon-32.png" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="img/favicon-180.png" sizes="180x180">
@@ -15,6 +31,7 @@
 <script src="js/config.js"></script>
 </head>
 <body>
+<a class="skip" href="#brilliant">Skip to the highlights</a>
 <div class="grain" aria-hidden="true"></div>
 
 <header class="topbar">
@@ -26,8 +43,8 @@
 
 <main id="top">
 
-<!-- 1. HERO -->
-<section class="hero hero-compact" id="hero">
+<!-- 1. HERO: masthead + featured-victory spotlight -->
+<section class="hero hero-v2" id="hero">
   <div class="hero-copy">
     <p class="kicker"><span class="dot"></span> 2026 bullet<span class="k-long"> chess</span> · <span class="k-long" data-bind="period"></span><span class="k-short" data-bind="period-short"></span></p>
     <h1 class="logotype" aria-label="CLAWBERED"><span>CLAW</span><span>BERED</span></h1>
@@ -38,15 +55,23 @@
     </div>
     <div class="tickets" id="hero-tickets"></div>
   </div>
-  <div class="hero-art">
-    <img class="mascot" src="img/lobster-hero.svg" alt="CLAWBERED mascot: a Deco lobster in a fedora and tie, holding a knight beside a chess clock" width="600" height="600">
-    <span class="sticker s1">−3 AND STILL WON</span>
-    <span class="sticker s2">0.0s LEFT</span>
-    <span class="sticker s3">+560 UPSET</span>
-    <span class="sticker s4">PREMOVE<br>PRAYER</span>
-    <div class="hero-board-wrap">
-      <div class="hero-board" id="hero-board"></div>
-      <p class="hero-board-cap" id="hero-board-cap">Loading the #1 highlight…</p>
+  <div class="spotlight" id="spotlight" role="region" aria-roledescription="carousel" aria-label="Featured victories">
+    <img class="spot-mascot" src="img/lobster-hero.svg" alt="CLAWBERED mascot: a Deco lobster in a fedora and tie, holding a knight beside a chess clock" width="600" height="600">
+    <div class="spot-frame">
+      <div class="spot-label"><span>Featured victory</span><span id="spot-idx"></span></div>
+      <div class="spot-board" id="hero-board" role="img" aria-label="Chess board"></div>
+      <div class="spot-progress" aria-hidden="true"><i id="spot-prog"></i></div>
+    </div>
+    <div class="spot-info" aria-live="off">
+      <div class="spot-stickers" id="spot-stickers"></div>
+      <h2 class="spot-title" id="spot-title">Loading the highlights…</h2>
+      <p class="spot-meta" id="spot-meta"></p>
+      <div class="spot-actions">
+        <button type="button" class="spot-nav" id="spot-prev" aria-label="Previous featured victory">◀</button>
+        <button type="button" class="btn" id="spot-play">▶ Watch the replay</button>
+        <button type="button" class="spot-nav" id="spot-next" aria-label="Next featured victory">▶</button>
+        <button type="button" class="spot-nav spot-pause" id="spot-pause" aria-label="Pause the slideshow" aria-pressed="false">Pause</button>
+      </div>
     </div>
   </div>
 </section>
@@ -93,35 +118,57 @@
         <div class="board" id="board"></div>
       </div>
       <div class="clock-plate bottom" id="clk-bot"><span class="who"></span><span class="time">–</span></div>
+      <div class="moments" id="moments" role="group" aria-label="Key moments in this game"></div>
       <div class="controls" role="group" aria-label="Replay controls">
-        <button data-act="start" title="Start (Home)" aria-label="Start">⏮</button>
-        <button data-act="prev" title="Back (←)" aria-label="Previous move">◀</button>
-        <button data-act="play" title="Play/pause (space)" aria-label="Play">▶</button>
-        <button data-act="next" title="Forward (→)" aria-label="Next move">▶▶</button>
-        <button data-act="end" title="End (End)" aria-label="End">⏭</button>
-        <button data-act="key" class="keybtn" title="Jump to the key moment (K)">★ Key moment</button>
+        <button type="button" data-act="start" title="Start (Home)" aria-label="Start">⏮</button>
+        <button type="button" data-act="prev" title="Back (←)" aria-label="Previous move">◀</button>
+        <button type="button" data-act="play" title="Play/pause (space)" aria-label="Play">▶</button>
+        <button type="button" data-act="next" title="Forward (→)" aria-label="Next move">▶▶</button>
+        <button type="button" data-act="end" title="End (End)" aria-label="End">⏭</button>
+        <button type="button" data-act="key" class="keybtn" title="Jump to the key moment (K)">★ Key moment</button>
       </div>
-      <input type="range" id="scrub" min="0" max="0" value="0" aria-label="Scrub through the game">
+      <div class="scrub-row"><input type="range" id="scrub" min="0" max="0" value="0" aria-label="Scrub through the game"><span class="ti-step" id="ti-step" aria-hidden="true"></span></div>
+      <div class="controls2" role="group" aria-label="Board options">
+        <button type="button" data-act="speed" aria-label="Playback speed 1×, press to change" title="Playback speed">1×</button>
+        <button type="button" data-act="flip" aria-pressed="false" title="Flip the board (F)">⇅ Flip</button>
+        <span class="kbd-hint">Keys: ← → · space · K · [ ] moments · F flip</span>
+      </div>
     </div>
     <div class="theater-info">
+      <div class="ti-nav">
+        <button type="button" class="ti-navbtn" id="ti-prev" aria-label="Previous highlight">◀ Prev</button>
+        <span class="ti-count" id="ti-count"></span>
+        <button type="button" class="ti-navbtn" id="ti-next" aria-label="Next highlight">Next ▶</button>
+        <button type="button" class="ti-navbtn ti-link" id="ti-link" title="Copy a link straight to this replay">🔗 Copy link</button>
+      </div>
       <div class="ti-head">
         <div class="ti-stickers" id="ti-stickers"></div>
         <h3 id="ti-title">Pick a highlight</h3>
         <p class="ti-meta" id="ti-meta"></p>
       </div>
       <p class="ti-caption" id="ti-caption"></p>
-      <div class="ti-move" id="ti-move"></div>
+      <div class="ti-move" id="ti-move" aria-live="polite"></div>
       <div class="graphs">
-        <div class="graph"><span class="glabel">Eval (his side)</span><svg id="g-eval" viewBox="0 0 600 90" preserveAspectRatio="none"></svg></div>
+        <div class="graph"><span class="glabel">Eval (his side) <i class="lg-tick up"></i><span class="lgt">swing for him</span> <i class="lg-tick dn"></i><span class="lgt">against</span></span><svg id="g-eval" viewBox="0 0 600 90" preserveAspectRatio="none"></svg></div>
         <div class="graph"><span class="glabel">Clocks <i class="lg lg-me"></i>him <i class="lg lg-op"></i>opponent</span><svg id="g-clk" viewBox="0 0 600 90" preserveAspectRatio="none"></svg></div>
       </div>
       <ol class="movelist" id="movelist"></ol>
       <p class="ti-src" id="ti-src"></p>
     </div>
   </div>
-  <div class="reel-filters" id="reel-filters"></div>
+  <div class="reel-tools">
+    <div class="reel-filters" id="reel-filters" role="group" aria-label="Filter by type"></div>
+    <div class="reel-opts">
+      <div class="seg" id="reel-plat" role="group" aria-label="Filter by site"><button type="button" class="on" data-p="all" aria-pressed="true">Both sites</button><button type="button" data-p="Chess.com" aria-pressed="false">Chess.com</button><button type="button" data-p="Lichess" aria-pressed="false">Lichess</button></div>
+      <label class="sortl">Sort <select id="reel-sort">
+        <option value="rank">Highlight rank</option><option value="date">Newest first</option><option value="gap">Strongest opponent</option><option value="clock">Least time on his clock</option><option value="short">Shortest win</option>
+      </select></label>
+      <button type="button" class="btn ghost" id="reel-random">🎲 Surprise me</button>
+    </div>
+  </div>
+  <p class="reel-count" id="reel-count" aria-live="polite"></p>
   <div class="reel" id="reel-grid"></div>
-  <button class="btn reel-more" id="reel-more" hidden>Show all</button>
+  <button type="button" class="btn reel-more" id="reel-more" hidden>Show all</button>
 </section>
 
 <!-- 9. UPSETS -->
@@ -157,9 +204,9 @@
   <header class="sec-head"><span class="sec-no">Nº 05</span><h2>The Numbers</h2><p class="sec-sub" data-bind="period-note"></p></header>
   <div class="stat-grid" id="stat-big"></div>
   <div class="dash">
-    <article class="panel" id="panel-formats"><h3>By site &amp; format</h3><div id="formats"></div></article>
-    <article class="panel" id="panel-winsby"><h3>How the wins land</h3><div id="winsby"></div></article>
-    <article class="panel" id="panel-peaks"><h3>Peak ratings, 2026</h3><div id="peaks"></div></article>
+    <article class="panel" id="panel-formats"><h3>By site &amp; format</h3><p class="how">Each bar splits that format's games into wins, draws and losses. Score counts a draw as half a win; 50% means even against the field.</p><div id="formats"></div></article>
+    <article class="panel" id="panel-winsby"><h3>How the wins land</h3><p class="how">Every 2026 win, by how it ended.</p><div id="winsby"></div></article>
+    <article class="panel" id="panel-peaks"><h3>Peak ratings, 2026</h3><p class="how">Highest rating reached this year, and the change from the first 2026 game.</p><div id="peaks"></div></article>
   </div>
 </section>
 
@@ -168,7 +215,9 @@
   <header class="sec-head"><span class="sec-no">Nº 06</span><h2>The Climb</h2><p class="sec-sub" id="rating-note"></p></header>
   <div class="rating-hero" id="rating-hero"></div>
   <div class="chips" id="rating-chips"></div>
-  <div class="chart-wrap"><svg id="rating-chart" viewBox="0 0 1000 440" role="img" aria-label="Chess.com bullet rating in 2026, with optional Chess.com blitz and Lichess lines"></svg><div class="chart-tip" id="rating-tip"></div></div>
+  <div class="chart-wrap"><svg id="rating-chart" viewBox="0 0 1000 440" role="application" aria-roledescription="chart" tabindex="0" aria-label="Chess.com bullet rating in 2026, with optional Chess.com blitz and Lichess lines. Use the arrow keys to step through the dates."></svg><div class="chart-tip" id="rating-tip" aria-live="polite"></div></div>
+  <p class="chart-foot" id="rating-foot"></p>
+  <div class="monthly panel" id="rating-monthly"></div>
   <div class="climb-cards" id="climb-cards"></div>
 </section>
 
@@ -187,7 +236,7 @@
 <section class="section" id="heatmap">
   <header class="sec-head"><span class="sec-no">Nº 08</span><h2>When the Claws Come Out</h2><p class="sec-sub" id="heat-note"></p></header>
   <div class="heat-best" id="heat-best"></div>
-  <div class="heat-scroll"><div class="heat" id="heat-grid"></div></div>
+  <div class="heat-scroll"><div class="heat" id="heat-grid" role="group" aria-label="Wins by weekday and hour, Eastern Time. Use the arrow keys to move between cells."></div></div>
   <p class="heat-detail" id="heat-detail">Tap or hover a cell.</p>
 </section>
 
