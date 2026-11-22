@@ -176,8 +176,17 @@ function renderHero(D) {
   $("acct-cc").href = $("f-cc").href = CFG.profiles?.["Chess.com"] || "#";
   $("acct-li").href = $("f-li").href = CFG.profiles?.["Lichess"] || "#";
   // Hero shows each of these once; clutch (402) and minus-3 (1,086) live on the Clock-Chaos counts row.
-  const keep = new Set(["wins in 2026", "biggest upset: beat a 2447", "longest win streak"]);
+  // The upset ticket is a display override: THE 2361 UPSET (g-85635f7681), not the +560 vs 2447
+  // arena game from summary.headline. Figures are copied from that highlight (sticker, opp_rating, moves), not recomputed.
+  const keep = new Set(["wins in 2026", "longest win streak"]);
   const tickets = (s.headline || []).filter((h) => keep.has(h.label));
+  const feat = (D.highlights?.items || []).find((h) => h.id === "g-85635f7681");
+  const gap = feat && (feat.stickers || []).map((st) => String(st).match(/\+(\d+)\s*UPSET/i)).find(Boolean);
+  if (feat && gap && feat.opp_rating != null && feat.moves != null) {
+    const upset = { value: `+${gap[1]}`, label: `best upset: mated a ${feat.opp_rating}`, sub: feat.term === "mate" ? `mate in ${feat.moves}` : `in ${feat.moves}` };
+    const at = tickets.findIndex((h) => h.label === "wins in 2026");
+    tickets.splice(at < 0 ? tickets.length : at + 1, 0, upset);
+  }
   $("hero-tickets").innerHTML = tickets.map((h) => `<div class="ticket"><div class="v">${esc(h.value)}</div><div class="l">${esc(nbsp(h.label))}</div><div class="s">${esc(shortSub(h.sub))}</div></div>`).join("");
 }
 
