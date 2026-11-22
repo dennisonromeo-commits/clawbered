@@ -149,7 +149,7 @@ function gameCard(g, { tag = "", rank = null, cls = "", showMini = true, prov = 
       <div class="meta">${esc(`${g.plat} · ${g.tc} · ${fmtDate(g.date)}`)}<br>${esc(resultLine(g))}</div></div></div>
     <div>${(g.stickers || []).slice(0, 3).map((s) => `<span class="chip${/BRILLIANT/.test(s) ? " bril" : ""}">${esc(s)}</span>`).join("")}</div>
     <p class="cap">${esc(g.caption || "")}</p>
-    <div class="row"><span class="meta">${esc(g.opening || "")}</span><button class="btn" data-play="${esc(g.uid)}">▶ Replay</button></div>
+    <div class="row"><span class="meta">${esc(g.opening || "")}</span><button class="btn" data-play="${esc(g.uid)}">Replay</button></div>
   </article>`;
 }
 
@@ -264,14 +264,14 @@ function renderStats(D) {
     return `<div class="fmt-row"><div class="nm"><b>${esc(f.plat)}</b><span>${esc(f.tclass)} · ${nf(f.games)} games</span></div>
       <div class="wdl" role="img" aria-label="${f.W} wins, ${f.D} draws, ${f.L} losses" title="${f.W} W · ${f.D} D · ${f.L} L"><i class="w" style="width:${w}%"></i><i class="d" style="width:${d}%"></i><i class="l" style="width:${l}%"></i></div>
       <div class="sc">${f.score}%</div></div>`;
-  }).join("") + `<div class="legend"><span><i style="background:var(--red)"></i>wins</span><span><i style="background:#777"></i>draws</span><span><i style="background:#3a3f4d"></i>losses</span><span>score = W + ½D</span></div>`;
+  }).join("") + `<div class="legend"><span><i style="background:#B0905A"></i>wins</span><span><i style="background:#8A8178"></i>draws</span><span><i style="background:#3B2E26"></i>losses</span><span>score = W + ½D</span></div>`;
 
   // donut
-  const wb = s.wins_by, keys = [["time", "On time", "#ff3b2f"], ["mate", "Checkmate", "#ffd23f"], ["resign", "Resignation", "#f4ead6"], ["abandon", "Abandoned", "#3fd0c9"]];
+  const wb = s.wins_by, keys = [["time", "On time", "#B0905A"], ["mate", "Checkmate", "#F3EEE4"], ["resign", "Resignation", "#8A8178"], ["abandon", "Abandoned", "#5C534C"]];
   const tot = keys.reduce((a, [k]) => a + (wb[k] || 0), 0);
   let acc = 0; const R = 54, C = 2 * Math.PI * R;
   const arcs = keys.map(([k, , c]) => { const f = (wb[k] || 0) / tot; const seg = `<circle r="${R}" cx="75" cy="75" fill="none" stroke="${c}" stroke-width="26" stroke-dasharray="${f * C} ${C}" stroke-dashoffset="${-acc * C}" transform="rotate(-90 75 75)"/>`; acc += f; return seg; }).join("");
-  $("winsby").innerHTML = `<div class="donut-wrap"><svg class="donut" viewBox="0 0 150 150" role="img" aria-label="${keys.map(([k, n]) => `${n}: ${wb[k] || 0}`).join(", ")}">${arcs}<circle r="41" cx="75" cy="75" fill="#171b25"/><text x="75" y="72" text-anchor="middle" fill="#f4ead6" font-family="Anton,Impact" font-size="28">${nf(tot)}</text><text x="75" y="90" text-anchor="middle" fill="#9aa0ad" font-size="11" font-family="Grotesk,sans-serif">WINS</text></svg>
+  $("winsby").innerHTML = `<div class="donut-wrap"><svg class="donut" viewBox="0 0 150 150" role="img" aria-label="${keys.map(([k, n]) => `${n}: ${wb[k] || 0}`).join(", ")}">${arcs}<circle r="41" cx="75" cy="75" fill="#0F0E0D"/><text x="75" y="72" text-anchor="middle" fill="#F3EEE4" font-family="Bodoni Moda,serif" font-size="28">${nf(tot)}</text><text x="75" y="90" text-anchor="middle" fill="#8A8178" font-size="11" font-family="Jost,sans-serif">WINS</text></svg>
     <div class="donut-legend">${keys.map(([k, n, c]) => `<div><span><i style="background:${c}"></i>${n}</span><b>${nf(wb[k] || 0)} <small>${tot ? Math.round((100 * (wb[k] || 0)) / tot) : 0}%</small></b></div>`).join("")}</div></div>`;
 
   const P = s.peaks;
@@ -297,7 +297,7 @@ function periodStickers(it) {
   const st = [...(it.stickers || [])];
   if (it.accuracy != null && it.accuracy >= 90) st.push(`${it.accuracy}% ACCURACY`);
   const sm = it.standout_move || it.key_move;
-  if (sm?.label && sm.by !== "opponent") st.push(`★ ${sm.label}`);
+  if (sm?.label && sm.by !== "opponent") st.push(sm.label);
   if (it.myclk != null && it.myclk <= 2) st.push(`${it.myclk.toFixed(1)}s LEFT`);
   if (it.opp_rating - it.me >= 200) st.push(`+${it.opp_rating - it.me} UPSET`);
   return st.slice(0, 3);
@@ -408,7 +408,7 @@ function renderChaos(D) {
     const sub = mode === "clock" ? `left on his clock · ${wonBy(g.term)}` : `material at worst · ${clk(g)} left · ${wonBy(g.term)}`;
     return `<div class="poster" data-play="${esc(g.uid)}" role="button" tabindex="0" title="Replay this game">
       <div class="ph">${head}</div><div class="big">${big}</div><div class="sub">${esc(sub)}</div>
-      <div class="foot">vs ${esc(g.opp)}${g.opp_berserk ? ' <span class="bz">berserked</span>' : ""}<br>${esc(g.plat)} · ${esc(g.tc)} · ${fmtDate(g.date)}<br>${esc(g.opening || "")}${g.mode === "clock" && g.deficit <= -3 ? "" : ""}${mode === "clock" && g.deficit <= -3 ? ` · also ${minus(g.deficit)} material` : ""} · ▶ replay</div></div>`;
+      <div class="foot">vs ${esc(g.opp)}${g.opp_berserk ? ' <span class="bz">berserked</span>' : ""}<br>${esc(g.plat)} · ${esc(g.tc)} · ${fmtDate(g.date)}<br>${esc(g.opening || "")}${g.mode === "clock" && g.deficit <= -3 ? "" : ""}${mode === "clock" && g.deficit <= -3 ? ` · also ${minus(g.deficit)} material` : ""} · Replay</div></div>`;
   };
   $("wall-lowest").innerHTML = c.lowest.map((g) => poster(REG.get(g._uid), "clock")).join("");
   $("wall-minus3").innerHTML = c.minus3.map((g) => poster(REG.get(g._uid), "minus3")).join("");
@@ -441,7 +441,7 @@ function renderRatings(D) {
   }).filter(Boolean);
   let showTrend = true, kx = -1;
   $("rating-foot").textContent = `Dashed line: ${TREND_DAYS}-day rolling average of the daily closing ratings (shown once ${TREND_MIN}+ days are in the window). A 500-game moving average isn't possible from the published data, which stores one closing rating per day rather than one per game.`;
-  const STY = { "Chess.com bullet": ["#ff3b2f", "", "chesscom_bullet"], "Lichess bullet": ["#f4ead6", "", "lichess_bullet"], "Chess.com blitz": ["#ffd23f", "7 5", "chesscom_blitz"], "Lichess blitz": ["#3fd0c9", "7 5", "lichess_blitz"] };
+  const STY = { "Chess.com bullet": ["#B0905A", "", "chesscom_bullet"], "Lichess bullet": ["#F3EEE4", "", "lichess_bullet"], "Chess.com blitz": ["#8A8178", "7 5", "chesscom_blitz"], "Lichess blitz": ["#5C534C", "7 5", "lichess_blitz"] };
   const names = Object.keys(R.series).sort((a, b) => Object.keys(STY).indexOf(a) - Object.keys(STY).indexOf(b));
   // Chess.com bullet is the featured line; the others are optional, secondary toggles (off by default).
   const FEATURED = "Chess.com bullet";
@@ -460,14 +460,14 @@ function renderRatings(D) {
     let lo = Math.floor((Math.min(...vals) - 30) / 100) * 100, hi = Math.ceil((Math.max(...vals) + 30) / 100) * 100;
     if (!vals.length) { lo = 1000; hi = 2000; }
     const Y = (v) => m.t + (1 - (v - lo) / (hi - lo)) * (H - m.t - m.b);
-    let g = `<defs><linearGradient id="rc-grad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff3b2f" stop-opacity=".35"/><stop offset="1" stop-color="#ff3b2f" stop-opacity="0"/></linearGradient></defs>`;
+    let g = `<defs><linearGradient id="rc-grad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#B0905A" stop-opacity=".35"/><stop offset="1" stop-color="#B0905A" stop-opacity="0"/></linearGradient></defs>`;
     svg._skipLast = new Set();
-    for (let v = lo; v <= hi; v += 100) g += `<line x1="${m.l}" x2="${W - m.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="#2a2f3d"/><text x="${m.l - 8}" y="${Y(v) + 4}" text-anchor="end" fill="#9aa0ad" font-size="${12 * fs}" font-family="Mono,monospace">${v}</text>`;
+    for (let v = lo; v <= hi; v += 100) g += `<line x1="${m.l}" x2="${W - m.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="#2a2f3d"/><text x="${m.l - 8}" y="${Y(v) + 4}" text-anchor="end" fill="#8A8178" font-size="${12 * fs}" font-family="Mono,monospace">${v}</text>`;
     const s0 = new Date(R.period.start), s1 = new Date(R.period.end);
     for (let d = new Date(Date.UTC(s0.getUTCFullYear(), s0.getUTCMonth(), 1)); d <= s1; d.setUTCMonth(d.getUTCMonth() + 1)) {
       const iso = d.toISOString().slice(0, 10), x = X(iso);
       if (narrow && d.getUTCMonth() % 2) { g += `<line x1="${x}" x2="${x}" y1="${m.t}" y2="${H - m.b}" stroke="#1f2430"/>`; continue; }
-      g += `<line x1="${x}" x2="${x}" y1="${m.t}" y2="${H - m.b}" stroke="#1f2430"/><text x="${x + 4}" y="${H - m.b + 20}" fill="#9aa0ad" font-size="${12 * fs}" font-family="Mono,monospace">${MON[d.getUTCMonth()]}</text>`;
+      g += `<line x1="${x}" x2="${x}" y1="${m.t}" y2="${H - m.b}" stroke="#1f2430"/><text x="${x + 4}" y="${H - m.b + 20}" fill="#8A8178" font-size="${12 * fs}" font-family="Mono,monospace">${MON[d.getUTCMonth()]}</text>`;
     }
     for (const n of vis) {
       const [c, dash, pk] = STY[n] || ["#aaa", "", null];
@@ -482,7 +482,7 @@ function renderRatings(D) {
         const px = X(pp[0]), py = Y(pp[1]);
         const feat = n === FEATURED, nearEnd = px > W - m.r - 120;
         g += `<circle class="${feat ? "peak-dot" : ""}" data-peak="${pp[1]}" cx="${px}" cy="${py}" r="${feat ? 10 : 6}" fill="${c}" stroke="#000" stroke-width="3"/>`
-          + `<text x="${nearEnd ? px - 16 : px}" y="${py - (feat ? 18 : 12)}" text-anchor="${nearEnd ? "end" : "middle"}" fill="${c}" font-size="${(feat ? 26 : 14) * fs}" font-family="Anton,Impact" letter-spacing=".5" stroke="#000" stroke-width="${feat ? 5 : 3}" paint-order="stroke">PEAK ${pp[1]}${feat ? " · " + fmtDate(pp[0]).replace(/, \d{4}/, "") : ""}</text>`;
+          + `<text x="${nearEnd ? px - 16 : px}" y="${py - (feat ? 18 : 12)}" text-anchor="${nearEnd ? "end" : "middle"}" fill="${c}" font-size="${(feat ? 26 : 14) * fs}" font-family="Bodoni Moda,serif" letter-spacing=".5" stroke="#000" stroke-width="${feat ? 5 : 3}" paint-order="stroke">PEAK ${pp[1]}${feat ? " · " + fmtDate(pp[0]).replace(/, \d{4}/, "") : ""}</text>`;
         if (pp === pts[pts.length - 1]) { svg._skipLast = (svg._skipLast || new Set()).add(n); }
       }
       const last = pts[pts.length - 1];
@@ -535,7 +535,7 @@ function renderRatings(D) {
   });
   svg.addEventListener("blur", () => { tip.style.opacity = 0; svg.querySelector("#rc-x")?.setAttribute("opacity", 0); });
   draw();
-  renderMonthly(R, FEATURED, STY[FEATURED]?.[0] || "#ff3b2f");
+  renderMonthly(R, FEATURED, STY[FEATURED]?.[0] || "#B0905A");
   $("climb-cards").innerHTML = Object.entries(STY).filter(([n, s]) => R.peaks?.[s[2]]).map(([n, s]) => {
     const p = R.peaks[s[2]], d = p.current - p.first;
     return `<div class="climb" style="--c:${s[0]}"><div class="t">${esc(n)}</div><div class="v">${p.current}</div><div class="s">started 2026 at ${p.first} · 2026 peak ${p.peak}</div>${d > 0 ? `<div class="up">▲ +${d} this year</div>` : `<div class="up">2026 peak ${p.peak} on ${fmtDate(p.date)}</div>`}</div>`;
@@ -573,14 +573,14 @@ function renderHeat(D) {
     for (let h = 0; h < 24; h++) {
       const c = cell.get(`${wd}-${h}`);
       const t = c ? c.wins / maxW : 0;
-      const bg = c ? `rgba(255,59,47,${(0.1 + 0.9 * Math.pow(t, 0.8)).toFixed(3)})` : "";
+      const bg = c ? `rgba(176,144,90,${(0.1 + 0.9 * Math.pow(t, 0.8)).toFixed(3)})` : "";
       const desc = `${DAYS[wd]} ${hr12(h)} ET: ${c ? `${c.wins} wins from ${c.games} games, ${c.score}% score` : "no games"}${best.has(`${wd}-${h}`) ? ", one of the best slots" : ""}`;
       html += `<div class="c ${best.has(`${wd}-${h}`) ? "best" : ""}" data-k="${wd}-${h}" role="button" tabindex="${wd === 0 && h === 0 ? 0 : -1}" aria-label="${desc}" style="${bg ? "background:" + bg : ""}" title="${desc}"></div>`;
     }
   }
   $("heat-grid").innerHTML = html;
   $("heat-grid").insertAdjacentHTML("afterend", "");
-  document.querySelector(".heat-scroll").insertAdjacentHTML("afterend", `<div class="heat-legend">fewer wins <i style="background:rgba(255,59,47,.12)"></i><i style="background:rgba(255,59,47,.4)"></i><i style="background:rgba(255,59,47,.7)"></i><i style="background:rgba(255,59,47,1)"></i> more wins · ★ = best score % (with enough games)</div>`);
+  document.querySelector(".heat-scroll").insertAdjacentHTML("afterend", `<div class="heat-legend">fewer wins <i style="background:rgba(176,144,90,.18)"></i><i style="background:rgba(176,144,90,.4)"></i><i style="background:rgba(176,144,90,.7)"></i><i style="background:#B0905A"></i> more wins · mark = best score % (with enough games)</div>`);
   const show = (k, el) => {
     const c = cell.get(k); const [wd, h] = k.split("-").map(Number);
     $("heat-grid").querySelectorAll(".sel").forEach((x) => x.classList.remove("sel")); el.classList.add("sel");
@@ -612,9 +612,9 @@ function renderUpsets(D) {
   const bz = u1.opp_berserk ? `<span class="note">Footnote: the opponent berserked (${base / 2}s vs his ${base}s)</span>` : "";
   let html = `<article class="u1" data-card="${esc(u1.uid)}"><span class="num">#1 UPSET OF 2026</span><div class="gap">+${u1.gap}</div>
     <div class="vs">beat <b>${esc(u1.opp)}</b> as ${esc(u1.color)} (${u1.me})</div>
-    <div class="meta" style="color:#ffd9d4">${esc(metaLine(u1))} · ${esc(wonBy(u1.term))} in ${u1.moves} · ${esc(u1.opening || "")}</div>
-    <p class="cap">${esc(u1.caption || "")}</p>${bz}<button class="btn" data-play="${esc(u1.uid)}">▶ Replay the upset</button></article>`;
-  html += `<div class="u-rest">` + rest.map((u, i) => `<article class="ux" data-card="${esc(u.uid)}"><div class="rk">#${i + 2}</div><div><div class="g">+${u.gap}</div><div class="d"><b>beat ${esc(u.opp)}</b><br>${esc(u.plat)} ${esc(u.tc)} · ${fmtDate(u.date)} · ${esc(TERM[u.term] || u.term)} in ${u.moves}${u.opp_berserk ? " · opp berserked" : ""}</div></div><button class="btn" data-play="${esc(u.uid)}">▶ Replay</button></article>`).join("") + `</div>`;
+    <div class="meta" style="color:#D9C9A8">${esc(metaLine(u1))} · ${esc(wonBy(u1.term))} in ${u1.moves} · ${esc(u1.opening || "")}</div>
+    <p class="cap">${esc(u1.caption || "")}</p>${bz}<button class="btn" data-play="${esc(u1.uid)}">Replay the upset</button></article>`;
+  html += `<div class="u-rest">` + rest.map((u, i) => `<article class="ux" data-card="${esc(u.uid)}"><div class="rk">#${i + 2}</div><div><div class="g">+${u.gap}</div><div class="d"><b>beat ${esc(u.opp)}</b><br>${esc(u.plat)} ${esc(u.tc)} · ${fmtDate(u.date)} · ${esc(TERM[u.term] || u.term)} in ${u.moves}${u.opp_berserk ? " · opp berserked" : ""}</div></div><button class="btn" data-play="${esc(u.uid)}">Replay</button></article>`).join("") + `</div>`;
   $("upset-list").innerHTML = html;
 }
 
@@ -644,7 +644,7 @@ function renderVault(D) {
         <div class="vault-chips">${(g.stickers || []).map((s) => `<span class="chip${/BRILLIANT/.test(s) ? " bril" : ""}">${esc(s)}</span>`).join("")}</div>
       </div></div>
       <p class="cap">${esc(g.caption || "")}</p>
-      <div class="row"><span class="meta">${g.excluded_from_stats ? "Archive piece · not in 2026 stats" : ""}</span><button class="btn" data-play="${esc(g.uid)}">▶ Replay${km ? ` · <span class="mv">${esc(km)}</span>` : ""}</button></div>
+      <div class="row"><span class="meta">${g.excluded_from_stats ? "Archive piece · not in 2026 stats" : ""}</span><button class="btn" data-play="${esc(g.uid)}">Replay${km ? ` · <span class="mv">${esc(km)}</span>` : ""}</button></div>
     </article>`;
   }).join("");
   hydrateMinis($("vault-list"));
@@ -921,7 +921,28 @@ function registerAll(D) {
   }
 }
 
+
+function initNavFade() {
+  const wrap = document.querySelector(".nav-wrap");
+  const nav = wrap && wrap.querySelector(".nav");
+  if (!wrap || !nav) return;
+  const update = () => {
+    // Sum children, not scrollWidth: justify-content:flex-end overflow is off to the left and would read as "fits".
+    const content = Array.from(nav.children).reduce((s, el) => s + el.getBoundingClientRect().width, 0);
+    const overflowing = content > nav.clientWidth + 1;
+    wrap.classList.toggle("is-overflow", overflowing);
+    wrap.classList.toggle("is-fit", !overflowing);
+    const max = Math.max(0, nav.scrollWidth - nav.clientWidth);
+    wrap.classList.toggle("fade-left", overflowing && nav.scrollLeft > 2);
+    wrap.classList.toggle("fade-right", overflowing && max - nav.scrollLeft > 2);
+  };
+  nav.addEventListener("scroll", update, { passive: true });
+  addEventListener("resize", update);
+  update();
+}
+
 async function main() {
+  initNavFade();
   replay = new Replay($("theater"));
   initTheaterNav();
   let D;

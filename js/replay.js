@@ -188,7 +188,7 @@ export class Replay {
     this.timer = setTimeout(step, 120);
   }
   stop() { clearTimeout(this.timer); this.timer = null; this.setPlayIcon(false); this.$("ti-move")?.setAttribute("aria-live", "polite"); }
-  setPlayIcon(on) { const b = this.root.querySelector('[data-act="play"]'); b.textContent = on ? "⏸" : "▶"; b.setAttribute("aria-label", on ? "Pause" : "Play"); }
+  setPlayIcon(on) { const b = this.root.querySelector('[data-act="play"]'); b.textContent = on ? "Pause" : "Play"; b.setAttribute("aria-label", on ? "Pause" : "Play"); }
 
   load(g, { at = "key" } = {}) {
     this.stop();
@@ -234,7 +234,7 @@ export class Replay {
     const add = (p, kind, label, why) => { if (p < 1 || p > n || M.has(p)) return; M.set(p, { p, kind, label, why }); };
     const mv = (p) => `${Math.ceil(p / 2)}${p % 2 ? "." : "..."}${this.pos[p].san}`;
     this.mvLabel = mv;
-    add(this.keyPos, "key", `★ ${mv(this.keyPos)}`, "Key moment");
+    add(this.keyPos, "key", mv(this.keyPos), "Key moment");
     for (const b of this.brilPlies) add(b + 1, "bril", `${mv(b + 1)}!!`, "Brilliant (Chess.com Game Review)");
     [...this.swings.values()].length && [...this.swings.entries()].sort((a, b) => Math.abs(b[1].d) - Math.abs(a[1].d)).slice(0, 3)
       .forEach(([p, s]) => add(p, s.d > 0 ? "up" : "down", `${s.d > 0 ? "▲" : "▼"} ${mv(p)}`,
@@ -303,7 +303,7 @@ export class Replay {
     // move label
     const mv = s.san ? `${Math.ceil(p / 2)}${p % 2 ? "." : "..."} ${s.san}` : "Start position";
     const sw = this.swings.get(p);
-    const star = (p === this.keyPos ? "  ★ KEY MOMENT" : "") + (this.brilPlies.has(p - 1) ? "  !! BRILLIANT" : "") + (sw && p !== this.keyPos ? `  ${sw.d > 0 ? "▲" : "▼"} SWING` : "");
+    const star = (p === this.keyPos ? "  KEY MOMENT" : "") + (this.brilPlies.has(p - 1) ? "  !! BRILLIANT" : "") + (sw && p !== this.keyPos ? `  ${sw.d > 0 ? "▲" : "▼"} SWING` : "");
     const evs = this.evMe && p > 0 ? (Math.abs(cp) >= 1500 ? `  ·  ${cp > 0 ? "forced mate for him" : "engine sees mate against him"}` : `  ·  eval ${fmtEval(cp)} for him`) : "";
     this.$("ti-move").textContent = `${mv}${star}${evs}`;
     this.$("ti-step") && (this.$("ti-step").textContent = `${p} / ${n}`);
@@ -334,8 +334,8 @@ export class Replay {
     const n = Math.max(1, this.pos.length - 1), W = 600, H = 90;
     const X = (i) => (i / n) * W;
     const keyX = X(this.keyPos);
-    const keyMark = `<line x1="${keyX}" x2="${keyX}" y1="0" y2="${H}" stroke="#ffd23f" stroke-width="2" stroke-dasharray="4 3" vector-effect="non-scaling-stroke"/>`;
-    const ticks = (this.moments || []).filter((m) => m.kind === "up" || m.kind === "down" || m.kind === "bril").map((m) => `<line x1="${X(m.p)}" x2="${X(m.p)}" y1="0" y2="8" stroke="${m.kind === "down" ? "#ff3b2f" : "#3fd0c9"}" stroke-width="3" vector-effect="non-scaling-stroke"/>`).join("");
+    const keyMark = `<line x1="${keyX}" x2="${keyX}" y1="0" y2="${H}" stroke="#B0905A" stroke-width="2" stroke-dasharray="4 3" vector-effect="non-scaling-stroke"/>`;
+    const ticks = (this.moments || []).filter((m) => m.kind === "up" || m.kind === "down" || m.kind === "bril").map((m) => `<line x1="${X(m.p)}" x2="${X(m.p)}" y1="0" y2="8" stroke="${m.kind === "down" ? "#8E1B1B" : "#B0905A"}" stroke-width="3" vector-effect="non-scaling-stroke"/>`).join("");
     const cursor = `<line class="cur" x1="0" x2="0" y1="0" y2="${H}" stroke="#f4ead6" stroke-width="2" vector-effect="non-scaling-stroke"/>`;
     // eval
     const ge = this.$("g-eval");
@@ -345,7 +345,7 @@ export class Replay {
       this.evMe.forEach((v, i) => { d += ` L${X(i).toFixed(1)} ${Y(i === 0 ? 20 * (this.me === "white" ? 1 : -1) : v).toFixed(1)}`; });
       const area = `${d} L${W} ${H / 2} Z`;
       ge.innerHTML = `<defs><clipPath id="cpTop"><rect x="0" y="0" width="${W}" height="${H / 2}"/></clipPath><clipPath id="cpBot"><rect x="0" y="${H / 2}" width="${W}" height="${H / 2}"/></clipPath></defs>
-        <path d="${area}" fill="#ff3b2f" opacity=".75" clip-path="url(#cpTop)"/><path d="${area}" fill="#3a3f4d" clip-path="url(#cpBot)"/>
+        <path d="${area}" fill="#B0905A" opacity=".85" clip-path="url(#cpTop)"/><path d="${area}" fill="#3B2E26" clip-path="url(#cpBot)"/>
         <line x1="0" x2="${W}" y1="${H / 2}" y2="${H / 2}" stroke="#555" vector-effect="non-scaling-stroke"/>${keyMark}${ticks}${cursor}`;
       ge.parentElement.style.display = "";
     } else {
@@ -362,9 +362,9 @@ export class Replay {
         return d;
       };
       const opp = this.me === "white" ? "black" : "white";
-      gc.innerHTML = `<line x1="0" x2="${W}" y1="${Y(10)}" y2="${Y(10)}" stroke="#ff3b2f" stroke-dasharray="3 4" opacity=".5" vector-effect="non-scaling-stroke"/>
-        <path d="${line(opp)}" fill="none" stroke="#3fd0c9" stroke-width="2.5" vector-effect="non-scaling-stroke"/>
-        <path d="${line(this.me)}" fill="none" stroke="#ff3b2f" stroke-width="3" vector-effect="non-scaling-stroke"/>${keyMark}${cursor}`;
+      gc.innerHTML = `<line x1="0" x2="${W}" y1="${Y(10)}" y2="${Y(10)}" stroke="#8E1B1B" stroke-dasharray="3 4" opacity=".5" vector-effect="non-scaling-stroke"/>
+        <path d="${line(opp)}" fill="none" stroke="#8A8178" stroke-width="2.5" vector-effect="non-scaling-stroke"/>
+        <path d="${line(this.me)}" fill="none" stroke="#F3EEE4" stroke-width="3" vector-effect="non-scaling-stroke"/>${keyMark}${cursor}`;
       gc.parentElement.style.display = "";
     } else gc.parentElement.style.display = "none";
   }

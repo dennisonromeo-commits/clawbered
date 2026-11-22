@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CLAWBERED · 2026 bullet chess highlights</title>
 <meta name="description" content="CLAWBERED: 2026 bullet chess highlights from Chess.com LobsterRomeo and Lichess QuiteQuickly. Flag wins, comebacks, upsets.">
-<meta name="theme-color" content="#0b0d12">
+<meta name="theme-color" content="#0F0E0D">
 <link rel="canonical" href="https://dennisonromeo-commits.github.io/clawbered/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="CLAWBERED">
@@ -15,18 +15,18 @@
 <meta property="og:image" content="https://dennisonromeo-commits.github.io/clawbered/img/og-card.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="CLAWBERED logotype with the Deco lobster mascot">
+<meta property="og:image:alt" content="CLAWBERED wordmark">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="preload" href="vendor/fonts/anton-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="vendor/fonts/space-grotesk-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="vendor/fonts/bodoni-moda-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="vendor/fonts/jost-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="modulepreload" href="js/replay.js">
 <link rel="modulepreload" href="vendor/chessground/chessground.min.js">
 <link rel="modulepreload" href="vendor/chessjs/chess.js">
-<link rel="icon" href="img/lobster-favicon.svg" type="image/svg+xml">
+<link rel="icon" href="img/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="img/favicon-32.png" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="img/favicon-180.png" sizes="180x180">
 <link rel="stylesheet" href="vendor/chessground/chessground.base.css">
-<link rel="stylesheet" href="vendor/chessground/chessground.cburnett.css">
+<link rel="stylesheet" href="vendor/chessground/chessground.chessnut.css">
 <link rel="stylesheet" href="css/style.css">
 <script src="js/config.js"></script>
 </head>
@@ -35,10 +35,12 @@
 <div class="grain" aria-hidden="true"></div>
 
 <header class="topbar">
-  <a class="brand" href="#top"><img src="img/lobster-favicon.svg" alt="" width="34" height="34"><span>CLAWBERED</span></a>
-  <nav class="nav" aria-label="Sections">
-    <a href="#brilliant">Brilliant</a><a href="#gotw">Picks</a><a href="#rosen">Rosen</a><a href="#reel">Reel</a><a href="#upsets">Upsets</a><a href="#chaos">Clock Chaos</a><a href="#vault">Vault</a><a href="#stats">Stats</a><a href="#ratings">Ratings</a><a href="#openings">Openings</a><a href="#heatmap">Heatmap</a>
-  </nav>
+  <a class="brand" href="#top"><img class="mark" src="img/mark.svg" alt="" width="28" height="28"><img class="brand-word" src="img/wordmark.svg" alt="CLAWBERED"></a>
+  <div class="nav-wrap">
+    <nav class="nav" aria-label="Sections">
+      <a href="#brilliant">Brilliant</a><a href="#gotw">Picks</a><a href="#rosen">Rosen</a><a href="#reel">Reel</a><a href="#upsets">Upsets</a><a href="#chaos">Clock Chaos</a><a href="#vault">Vault</a><a href="#stats">Stats</a><a href="#ratings">Ratings</a><a href="#openings">Openings</a><a href="#heatmap">Heatmap</a>
+    </nav>
+  </div>
 </header>
 
 <main id="top">
@@ -46,17 +48,15 @@
 <!-- 1. HERO: masthead + featured-victory spotlight -->
 <section class="hero hero-v2" id="hero">
   <div class="hero-copy">
-    <p class="kicker"><span class="dot"></span> 2026 bullet<span class="k-long"> chess</span> · <span class="k-long" data-bind="period"></span><span class="k-short" data-bind="period-short"></span></p>
-    <h1 class="logotype" aria-label="CLAWBERED"><span>CLAW</span><span>BERED</span></h1>
+    <p class="kicker">2026 bullet<span class="k-long"> chess</span> · <span class="k-long" data-bind="period"></span><span class="k-short" data-bind="period-short"></span></p>
+    <h1 class="logotype"><img src="img/wordmark.svg" alt="CLAWBERED"></h1>
     <p class="tagline">One-minute chess. Zero-second finishes. Every game here is a <em>win</em>.</p>
     <div class="hero-accounts">
       <a class="acct" id="acct-cc" target="_blank" rel="noopener"><b>Chess.com</b> LobsterRomeo <span class="rating" data-bind="cc-rating">–</span></a>
       <a class="acct" id="acct-li" target="_blank" rel="noopener"><b>Lichess</b> QuiteQuickly <span class="rating" data-bind="li-rating">–</span></a>
     </div>
-    <div class="tickets" id="hero-tickets"></div>
   </div>
   <div class="spotlight" id="spotlight" role="region" aria-roledescription="carousel" aria-label="Featured victories">
-    <img class="spot-mascot" src="img/lobster-hero.svg" alt="CLAWBERED mascot: a Deco lobster in a fedora and tie, holding a knight beside a chess clock" width="600" height="600">
     <div class="spot-frame">
       <div class="spot-label"><span>Featured victory</span><span id="spot-idx"></span></div>
       <div class="spot-board" id="hero-board" role="img" aria-label="Chess board"></div>
@@ -67,15 +67,15 @@
       <h2 class="spot-title" id="spot-title">Loading the highlights…</h2>
       <p class="spot-meta" id="spot-meta"></p>
       <div class="spot-actions">
-        <button type="button" class="spot-nav" id="spot-prev" aria-label="Previous featured victory">◀</button>
-        <button type="button" class="btn" id="spot-play">▶ Watch the replay</button>
-        <button type="button" class="spot-nav" id="spot-next" aria-label="Next featured victory">▶</button>
+        <button type="button" class="spot-nav" id="spot-prev" aria-label="Previous featured victory">Prev</button>
+        <button type="button" class="btn" id="spot-play">Watch the replay</button>
+        <button type="button" class="spot-nav" id="spot-next" aria-label="Next featured victory">Next</button>
         <button type="button" class="spot-nav spot-pause" id="spot-pause" aria-label="Pause the slideshow" aria-pressed="false">Pause</button>
       </div>
     </div>
   </div>
+  <div class="tickets" id="hero-tickets"></div>
 </section>
-
 
 <!-- 1b. BRILLIANT MOVES -->
 <section class="section bm" id="brilliant">
@@ -120,26 +120,26 @@
       <div class="clock-plate bottom" id="clk-bot"><span class="who"></span><span class="time">–</span></div>
       <div class="moments" id="moments" role="group" aria-label="Key moments in this game"></div>
       <div class="controls" role="group" aria-label="Replay controls">
-        <button type="button" data-act="start" title="Start (Home)" aria-label="Start">⏮</button>
-        <button type="button" data-act="prev" title="Back (←)" aria-label="Previous move">◀</button>
-        <button type="button" data-act="play" title="Play/pause (space)" aria-label="Play">▶</button>
-        <button type="button" data-act="next" title="Forward (→)" aria-label="Next move">▶▶</button>
-        <button type="button" data-act="end" title="End (End)" aria-label="End">⏭</button>
-        <button type="button" data-act="key" class="keybtn" title="Jump to the key moment (K)">★ Key moment</button>
+        <button type="button" data-act="start" title="Start (Home)" aria-label="Start">Start</button>
+        <button type="button" data-act="prev" title="Back (←)" aria-label="Previous move">Prev</button>
+        <button type="button" data-act="play" title="Play/pause (space)" aria-label="Play">Play</button>
+        <button type="button" data-act="next" title="Forward (→)" aria-label="Next move">Next</button>
+        <button type="button" data-act="end" title="End (End)" aria-label="End">End</button>
+        <button type="button" data-act="key" class="keybtn" title="Jump to the key moment (K)">Key moment</button>
       </div>
       <div class="scrub-row"><input type="range" id="scrub" min="0" max="0" value="0" aria-label="Scrub through the game"><span class="ti-step" id="ti-step" aria-hidden="true"></span></div>
       <div class="controls2" role="group" aria-label="Board options">
         <button type="button" data-act="speed" aria-label="Playback speed 1×, press to change" title="Playback speed">1×</button>
-        <button type="button" data-act="flip" aria-pressed="false" title="Flip the board (F)">⇅ Flip</button>
+        <button type="button" data-act="flip" aria-pressed="false" title="Flip the board (F)">Flip</button>
         <span class="kbd-hint">Keys: ← → · space · K · [ ] moments · F flip</span>
       </div>
     </div>
     <div class="theater-info">
       <div class="ti-nav">
-        <button type="button" class="ti-navbtn" id="ti-prev" aria-label="Previous highlight">◀ Prev</button>
+        <button type="button" class="ti-navbtn" id="ti-prev" aria-label="Previous highlight">Prev</button>
         <span class="ti-count" id="ti-count"></span>
-        <button type="button" class="ti-navbtn" id="ti-next" aria-label="Next highlight">Next ▶</button>
-        <button type="button" class="ti-navbtn ti-link" id="ti-link" title="Copy a link straight to this replay">🔗 Copy link</button>
+        <button type="button" class="ti-navbtn" id="ti-next" aria-label="Next highlight">Next</button>
+        <button type="button" class="ti-navbtn ti-link" id="ti-link" title="Copy a link straight to this replay">Copy link</button>
       </div>
       <div class="ti-head">
         <div class="ti-stickers" id="ti-stickers"></div>
@@ -163,7 +163,7 @@
       <label class="sortl">Sort <select id="reel-sort">
         <option value="rank">Highlight rank</option><option value="date">Newest first</option><option value="gap">Strongest opponent</option><option value="clock">Least time on his clock</option><option value="short">Shortest win</option>
       </select></label>
-      <button type="button" class="btn ghost" id="reel-random">🎲 Surprise me</button>
+      <button type="button" class="btn ghost" id="reel-random">Surprise me</button>
     </div>
   </div>
   <p class="reel-count" id="reel-count" aria-live="polite"></p>
@@ -225,8 +225,8 @@
 <section class="section" id="openings">
   <header class="sec-head"><span class="sec-no">Nº 07</span><h2>Best Openings</h2><p class="sec-sub" id="open-note"></p></header>
   <div class="open-cols">
-    <div><h3 class="col-h"><span class="pc w">♔</span> With White</h3><div id="open-white" class="open-list"></div></div>
-    <div><h3 class="col-h"><span class="pc b">♚</span> With Black</h3><div id="open-black" class="open-list"></div></div>
+    <div><h3 class="col-h"><span class="pc w" aria-hidden="true"></span> With White</h3><div id="open-white" class="open-list"></div></div>
+    <div><h3 class="col-h"><span class="pc b" aria-hidden="true"></span> With Black</h3><div id="open-black" class="open-list"></div></div>
   </div>
   <h3 class="col-h workh">The workhorses <small>most wins in 2026</small></h3>
   <div class="workhorses" id="open-most"></div>
@@ -243,9 +243,9 @@
 </main>
 
 <footer class="footer">
-  <img src="img/lobster-favicon.svg" alt="" width="64" height="64">
+  <img class="mark" src="img/mark.svg" alt="" width="48" height="48">
   <div>
-    <p class="f-logo">CLAWBERED</p>
+    <p class="f-logo"><img src="img/wordmark.svg" alt="CLAWBERED"></p>
     <p id="foot-scope"></p>
     <p>Opponents are shown as “Opponent (rating)”. Evals are our own local Stockfish check where noted. Not affiliated with Chess.com or Lichess.</p>
     <p class="f-links"><a id="f-cc" target="_blank" rel="noopener">Chess.com · LobsterRomeo</a> <a id="f-li" target="_blank" rel="noopener">Lichess · QuiteQuickly</a></p>
