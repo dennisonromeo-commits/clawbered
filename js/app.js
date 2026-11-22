@@ -18,8 +18,10 @@ const hr12 = (h) => `${h % 12 || 12}${h < 12 ? "am" : "pm"}`;
 
 // ---------- privacy guard: opponents are always "Opponent (rating)" ----------
 function safeOpp(g) {
-  if (typeof g.opp === "string" && /^Opponent \(\d+\)$/.test(g.opp)) return g.opp;
-  return `Opponent (${g.opp_rating ?? "?"})`;
+  // Always "vs Opponent (rating)". Call sites must not add another "vs" or "beat".
+  const fromOpp = typeof g.opp === "string" && String(g.opp).match(/Opponent\s*\((\d+|\?)\)/i);
+  const rating = fromOpp ? fromOpp[1] : (Number.isFinite(Number(g.opp_rating)) ? Number(g.opp_rating) : "?");
+  return `vs\u00a0Opponent\u00a0(${rating})`;
 }
 
 // The published data is pre-cleaned; the replay only needs SAN moves, so drop any PGN text defensively.
@@ -48,15 +50,24 @@ async function pickDataPath() {
   }
   throw new Error("No data folder found. Tried: " + paths.join(", "));
 }
-async function loadAll() {
+async function loadFile(base, f) {
+  try {
+    const r = await fetch(base + f + ".json", { cache: "no-cache" });
+    const data = r.ok ? await r.json() : null;
+    if (!data) console.warn(`[CLAWBERED] ${f}.json missing in ${base}`);
+    else dropPgn(data);
+    return data;
+  } catch (e) {
+    console.warn(`[CLAWBERED] ${f}.json missing in ${base}`);
+    return null;
+  }
+}
+async function loadAll(onSummary) {
   const base = await pickDataPath();
   const out = { _base: base };
-  await Promise.all(FILES.map(async (f) => {
-    try { const r = await fetch(base + f + ".json", { cache: "no-cache" }); out[f] = r.ok ? await r.json() : null; }
-    catch (e) { out[f] = null; }
-    if (!out[f]) console.warn(`[CLAWBERED] ${f}.json missing in ${base}`);
-    else dropPgn(out[f]);
-  }));
+  out.summary = await loadFile(base, "summary");
+  if (onSummary && out.summary) onSummary(out);
+  await Promise.all(FILES.filter((f) => f !== "summary").map(async (f) => { out[f] = await loadFile(base, f); }));
   return out;
 }
 
@@ -78,7 +89,7 @@ function register(g, extra = {}) {
 }
 const metaLine = (g) => `${g.plat} · ${g.tclass} ${g.tc} · ${fmtDate(g.date)}${g.time ? " " + g.time + " ET" : ""}`;
 const wonBy = (t) => (t === "time" || t === "timevsinsufficient" ? "won on time" : `won by ${TERM[t] || t}`);
-const resultLine = (g) => `as ${g.color} vs ${g.opp} · ${wonBy(g.term)}${g.moves ? ` in ${g.moves}` : ""}`;
+const resultLine = (g) => `as ${g.color} ${g.opp} · ${wonBy(g.term)}${g.moves ? ` in ${g.moves}` : ""}`;
 
 let replay;
 // The list that Prev/Next walk through: the reel as currently filtered and sorted, else every highlight.
@@ -156,7 +167,7 @@ function gameCard(g, { tag = "", rank = null, cls = "", showMini = true, prov = 
 // ---------- sections ----------
 function renderHero(D) {
   const s = D.summary;
-  document.querySelectorAll('[data-bind="period"]').forEach((e) => (e.textContent = s.period.label));
+  document.querySelectorAll('[data-bind="period"]').forEach((e) => (e.textContent = nbsp(s.period.label)));
   { const m = (s.period.label || "").match(/([A-Za-z]{3})[^A-Za-z]+([A-Za-z]{3})/); document.querySelectorAll('[data-bind="period-short"]').forEach((e) => (e.textContent = m ? `${m[1]}–${m[2]}` : s.period.label)); }
   document.querySelectorAll('[data-bind="period-note"]').forEach((e) => (e.textContent = s.period.note));
   const pk = s.peaks || {};
@@ -164,10 +175,10 @@ function renderHero(D) {
   document.querySelector('[data-bind="li-rating"]').textContent = pk.lichess_bullet?.current ?? "–";
   $("acct-cc").href = $("f-cc").href = CFG.profiles?.["Chess.com"] || "#";
   $("acct-li").href = $("f-li").href = CFG.profiles?.["Lichess"] || "#";
-  $("hero-tickets").innerHTML = (s.headline || []).map((h) => `<div class="ticket"><div class="v">${esc(h.value)}</div><div class="l">${esc(h.label)}</div><div class="s">${esc(shortSub(h.sub))}</div></div>`).join("");
-  const bits = ["−3 and still won", `${nf(s.clutch?.wins_le2s ?? 0)} wins with ≤2s`, "premove prayers answered", `${nf(s.totals.wins)} wins in 2026`, "flag 'em and bag 'em", `fastest mate: ${s.mates?.fastest_moves} moves`, "+560 giant-killing", `${nf(s.wins_by?.time ?? 0)} wins on time`, "clawbered"];
-  const html = bits.map((b) => `<span>${esc(b)}</span>`).join("");
-  $("marquee").innerHTML = html + html;
+  // Hero shows each of these once; clutch (402) and minus-3 (1,086) live on the Clock-Chaos counts row.
+  const keep = new Set(["wins in 2026", "biggest upset: beat a 2447", "longest win streak"]);
+  const tickets = (s.headline || []).filter((h) => keep.has(h.label));
+  $("hero-tickets").innerHTML = tickets.map((h) => `<div class="ticket"><div class="v">${esc(h.value)}</div><div class="l">${esc(nbsp(h.label))}</div><div class="s">${esc(shortSub(h.sub))}</div></div>`).join("");
 }
 
 // Featured-victory spotlight: the top five highlights, each replayed up to its key move, then held.
@@ -213,7 +224,7 @@ function heroBoard(D) {
     cg.set({ orientation: g.color === "Black" ? "black" : "white", animation: { enabled: false } });
     $("spot-idx").textContent = `${i + 1} / ${games.length}`;
     $("spot-title").textContent = g.title || "Highlight";
-    $("spot-meta").textContent = `${g.plat} · ${g.tc} · ${fmtDate(g.date)} · beat ${g.opp} · ${wonBy(g.term)} in ${g.moves}`;
+    $("spot-meta").textContent = `${g.plat} · ${g.tc} · ${fmtDate(g.date)} · ${g.opp} · ${wonBy(g.term)} in ${g.moves}`;
     $("spot-stickers").innerHTML = (g.stickers || []).slice(0, 3).map((x) => `<span class="chip${/BRILLIANT/.test(x) ? " bril" : ""}">${esc(x)}</span>`).join("");
     $("spot-play").dataset.uid = g.uid;
     $("spot-play").setAttribute("aria-label", `Watch the replay: ${g.title || "highlight"}`);
@@ -248,14 +259,13 @@ function heroBoard(D) {
 function renderStats(D) {
   const s = D.summary, t = s.totals;
   const score = (100 * (t.wins + t.draws / 2) / t.games).toFixed(1);
+  // Wins (3,915), the 13-game streak and the 402 clutch wins already appear on the hero or Clock Chaos.
   const big = [
     [nf(t.games), "rated games", `${nf(t.by_plat["Chess.com"].games)} Chess.com · ${nf(t.by_plat["Lichess"].games)} Lichess`],
-    [nf(t.wins), "wins", `${score}% score overall`],
+    [score + "%", "score overall", "wins + ½ draws, both sites"],
     [nf(s.wins_by.time), "wins on time", "the flag is a finishing move"],
     [nf(s.mates.total), "checkmates", `fastest: ${s.mates.fastest_moves} moves`],
-    [nf(s.streaks.combined.length), "win streak", `${fmtDate(s.streaks.combined.start.slice(0, 10))}, both sites`],
     [nf(s.best_day.wins), "wins in one day", fmtDate(s.best_day.date)],
-    [nf(s.clutch.wins_le2s), "wins with ≤2s left", `${nf(s.clutch.wins_lt1s)} with under 1s`],
   ];
   $("stat-big").innerHTML = big.map(([v, l, sub]) => `<div class="stat"><div class="v">${esc(v)}</div><div class="l">${esc(l)}</div><div class="s">${esc(sub)}</div></div>`).join("");
 
@@ -271,7 +281,7 @@ function renderStats(D) {
   const tot = keys.reduce((a, [k]) => a + (wb[k] || 0), 0);
   let acc = 0; const R = 54, C = 2 * Math.PI * R;
   const arcs = keys.map(([k, , c]) => { const f = (wb[k] || 0) / tot; const seg = `<circle r="${R}" cx="75" cy="75" fill="none" stroke="${c}" stroke-width="26" stroke-dasharray="${f * C} ${C}" stroke-dashoffset="${-acc * C}" transform="rotate(-90 75 75)"/>`; acc += f; return seg; }).join("");
-  $("winsby").innerHTML = `<div class="donut-wrap"><svg class="donut" viewBox="0 0 150 150" role="img" aria-label="${keys.map(([k, n]) => `${n}: ${wb[k] || 0}`).join(", ")}">${arcs}<circle r="41" cx="75" cy="75" fill="#0F0E0D"/><text x="75" y="72" text-anchor="middle" fill="#F3EEE4" font-family="Bodoni Moda,serif" font-size="28">${nf(tot)}</text><text x="75" y="90" text-anchor="middle" fill="#8A8178" font-size="11" font-family="Jost,sans-serif">WINS</text></svg>
+  $("winsby").innerHTML = `<div class="donut-wrap"><svg class="donut" viewBox="0 0 150 150" role="img" aria-label="${keys.map(([k, n]) => `${n}: ${wb[k] || 0}`).join(", ")}">${arcs}<circle r="41" cx="75" cy="75" fill="#0F0E0D"/><text x="75" y="78" text-anchor="middle" fill="#8A8178" font-size="11" font-family="Jost,sans-serif" letter-spacing="2">HOW</text></svg>
     <div class="donut-legend">${keys.map(([k, n, c]) => `<div><span><i style="background:${c}"></i>${n}</span><b>${nf(wb[k] || 0)} <small>${tot ? Math.round((100 * (wb[k] || 0)) / tot) : 0}%</small></b></div>`).join("")}</div></div>`;
 
   const P = s.peaks;
@@ -285,12 +295,25 @@ function renderStats(D) {
   }).join("");
 }
 
+// Unique default titles from titles_for_template.json, keyed by published game id.
+const PERIOD_TITLES = {
+  "g-66e3baa9b3": "SIXTY-TWO MOVES TO MATE",       // week winner, 21...Qf2, mate in 62
+  "g-b3724bad32": "ROOKS ON THE SECOND RANK",      // month winner, 12...Bxa1, mate in 36
+  "g-688a52264e": "THE KING HUNT TO H5",           // month runner-up, 12.Nxd6+, mate in 40
+  "g-e9f3b05f94": "NOT ONE INACCURACY",            // year winner, 12...Nd5, resign 49, 98.5%
+  "g-06f21ab820": "THE ROOK ENDGAME",              // year runner-up, 57...Rxf6, mate in 71
+};
+const ENDGAME_TITLES = {
+  "g-a0161fd2c8": "SIXTY-FIVE, QUEENS OFF",
+  "g-f4079ebb8c": "TWO PROMOTIONS",
+  "g-4d6002394d": "SIXTY-ONE MOVES",
+};
 function periodTitle(it) {
   if (it.title) return it.title;
-  if (brilliantOf(it) && it.key_move?.move_number) return `BRILLIANT ON MOVE ${it.key_move.move_number}`;
-  if (it.term === "mate") return `MATE ON MOVE ${it.moves}`;
-  if (it.term === "time") return `FLAGGED ON MOVE ${it.moves}`;
-  if (it.term === "resign") return `KNOCKOUT IN ${it.moves}`;
+  if (it.id && PERIOD_TITLES[it.id]) return PERIOD_TITLES[it.id];
+  if (brilliantOf(it) && it.key_move?.label) return it.key_move.label;
+  if (it.key_move?.label) return it.key_move.label;
+  if (it.standout_move?.label) return it.standout_move.label;
   return "THE PICK";
 }
 function periodStickers(it) {
@@ -403,12 +426,12 @@ function renderChaos(D) {
   $("chaos-counts").innerHTML = [[k.wins_le2s, "wins with ≤2 seconds left"], [k.wins_lt1s, "wins with under 1 second"], [k.minus3, "wins after being down 3+ material"], [k.minus3_on_time, "of those, finished on the clock"]]
     .map(([v, l]) => `<div class="cc"><div class="v">${nf(v)}</div><div class="l">${esc(l)}</div></div>`).join("");
   const poster = (g, mode) => {
-    const head = mode === "clock" ? "FLAGGED 'EM" : "DOWN BAD, STILL WON";
+    const head = mode === "clock" ? `${clk(g)} LEFT · MOVE ${g.moves}` : `DOWN ${Math.abs(g.deficit)} · MOVE ${g.moves}`;
     const big = mode === "clock" ? esc(clk(g)) : minus(g.deficit);
     const sub = mode === "clock" ? `left on his clock · ${wonBy(g.term)}` : `material at worst · ${clk(g)} left · ${wonBy(g.term)}`;
     return `<div class="poster" data-play="${esc(g.uid)}" role="button" tabindex="0" title="Replay this game">
       <div class="ph">${head}</div><div class="big">${big}</div><div class="sub">${esc(sub)}</div>
-      <div class="foot">vs ${esc(g.opp)}${g.opp_berserk ? ' <span class="bz">berserked</span>' : ""}<br>${esc(g.plat)} · ${esc(g.tc)} · ${fmtDate(g.date)}<br>${esc(g.opening || "")}${g.mode === "clock" && g.deficit <= -3 ? "" : ""}${mode === "clock" && g.deficit <= -3 ? ` · also ${minus(g.deficit)} material` : ""} · Replay</div></div>`;
+      <div class="foot">${esc(g.opp)}${g.opp_berserk ? ' <span class="bz">berserked</span>' : ""}<br>${esc(g.plat)} · ${esc(g.tc)} · ${fmtDate(g.date)}<br>${esc(g.opening || "")}${mode === "clock" && g.deficit <= -3 ? ` · also ${minus(g.deficit)} material` : ""} · Replay</div></div>`;
   };
   $("wall-lowest").innerHTML = c.lowest.map((g) => poster(REG.get(g._uid), "clock")).join("");
   $("wall-minus3").innerHTML = c.minus3.map((g) => poster(REG.get(g._uid), "minus3")).join("");
@@ -457,17 +480,19 @@ function renderRatings(D) {
   const draw = () => {
     const vis = names.filter((n) => on.has(n));
     const vals = vis.flatMap((n) => R.series[n].map((p) => p[1]));
+    // Include published peaks in the scale so a peak above the last daily close (1763 vs 1754) still plots.
+    for (const n of vis) { const P = R.peaks?.[STY[n]?.[2]]; if (P?.peak != null) vals.push(P.peak); }
     let lo = Math.floor((Math.min(...vals) - 30) / 100) * 100, hi = Math.ceil((Math.max(...vals) + 30) / 100) * 100;
     if (!vals.length) { lo = 1000; hi = 2000; }
     const Y = (v) => m.t + (1 - (v - lo) / (hi - lo)) * (H - m.t - m.b);
     let g = `<defs><linearGradient id="rc-grad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#B0905A" stop-opacity=".35"/><stop offset="1" stop-color="#B0905A" stop-opacity="0"/></linearGradient></defs>`;
     svg._skipLast = new Set();
-    for (let v = lo; v <= hi; v += 100) g += `<line x1="${m.l}" x2="${W - m.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="#2a2f3d"/><text x="${m.l - 8}" y="${Y(v) + 4}" text-anchor="end" fill="#8A8178" font-size="${12 * fs}" font-family="Mono,monospace">${v}</text>`;
+    for (let v = lo; v <= hi; v += 100) g += `<line x1="${m.l}" x2="${W - m.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="rgba(176,144,90,.22)"/><text x="${m.l - 8}" y="${Y(v) + 4}" text-anchor="end" fill="#8A8178" font-size="${12 * fs}" font-family="Jost,sans-serif" font-variant="tabular-nums">${v}</text>`;
     const s0 = new Date(R.period.start), s1 = new Date(R.period.end);
     for (let d = new Date(Date.UTC(s0.getUTCFullYear(), s0.getUTCMonth(), 1)); d <= s1; d.setUTCMonth(d.getUTCMonth() + 1)) {
       const iso = d.toISOString().slice(0, 10), x = X(iso);
-      if (narrow && d.getUTCMonth() % 2) { g += `<line x1="${x}" x2="${x}" y1="${m.t}" y2="${H - m.b}" stroke="#1f2430"/>`; continue; }
-      g += `<line x1="${x}" x2="${x}" y1="${m.t}" y2="${H - m.b}" stroke="#1f2430"/><text x="${x + 4}" y="${H - m.b + 20}" fill="#8A8178" font-size="${12 * fs}" font-family="Mono,monospace">${MON[d.getUTCMonth()]}</text>`;
+      if (narrow && d.getUTCMonth() % 2) { g += `<line x1="${x}" x2="${x}" y1="${m.t}" y2="${H - m.b}" stroke="rgba(176,144,90,.12)"/>`; continue; }
+      g += `<line x1="${x}" x2="${x}" y1="${m.t}" y2="${H - m.b}" stroke="rgba(176,144,90,.16)"/><text x="${x + 4}" y="${H - m.b + 20}" fill="#8A8178" font-size="${12 * fs}" font-family="Jost,sans-serif">${MON[d.getUTCMonth()]}</text>`;
     }
     for (const n of vis) {
       const [c, dash, pk] = STY[n] || ["#aaa", "", null];
@@ -478,15 +503,17 @@ function renderRatings(D) {
       g += `<path class="rline" d="${d}" fill="none" stroke="#000" stroke-width="${feat ? 9 : 6}" stroke-linejoin="round" opacity=".6"/><path class="rline ${feat ? "featured" : ""}" data-series="${esc(n)}" d="${d}" fill="none" stroke="${c}" stroke-width="${feat ? 4.5 : 2.4}" stroke-linejoin="round" stroke-dasharray="${dash}" opacity="${feat ? 1 : .8}"/>`;
       const P = R.peaks?.[pk];
       if (P) {
-        const pp = pts.find((p) => p[0] === P.date && p[1] === P.peak) || pts.reduce((a, b) => (b[1] > a[1] ? b : a));
-        const px = X(pp[0]), py = Y(pp[1]);
+        // Plot the published peak field, even when that rating is not a daily close (1763 on Nov 17; close was 1602).
+        const onLine = pts.find((p) => p[0] === P.date && p[1] === P.peak);
+        const px = X(P.date), py = Y(P.peak);
         const feat = n === FEATURED, nearEnd = px > W - m.r - 120;
-        g += `<circle class="${feat ? "peak-dot" : ""}" data-peak="${pp[1]}" cx="${px}" cy="${py}" r="${feat ? 10 : 6}" fill="${c}" stroke="#000" stroke-width="3"/>`
-          + `<text x="${nearEnd ? px - 16 : px}" y="${py - (feat ? 18 : 12)}" text-anchor="${nearEnd ? "end" : "middle"}" fill="${c}" font-size="${(feat ? 26 : 14) * fs}" font-family="Bodoni Moda,serif" letter-spacing=".5" stroke="#000" stroke-width="${feat ? 5 : 3}" paint-order="stroke">PEAK ${pp[1]}${feat ? " · " + fmtDate(pp[0]).replace(/, \d{4}/, "") : ""}</text>`;
-        if (pp === pts[pts.length - 1]) { svg._skipLast = (svg._skipLast || new Set()).add(n); }
+        const labY = py < m.t + 36 ? py + (feat ? 28 : 20) : py - (feat ? 22 : 14);
+        g += `<circle class="${feat ? "peak-dot" : ""}" data-peak="${P.peak}" cx="${px}" cy="${py}" r="${feat ? 8 : 5}" fill="${c}" stroke="#0F0E0D" stroke-width="2"/>`
+          + `<text x="${nearEnd ? px - 14 : px}" y="${labY}" text-anchor="${nearEnd ? "end" : "middle"}" fill="${c}" font-size="${(feat ? 16 : 12) * fs}" font-family="Jost,sans-serif" font-variant="tabular-nums" letter-spacing=".08em">PEAK ${P.peak}${feat ? " · " + fmtDate(P.date).replace(/, \d{4}/, "") : ""}</text>`;
+        if (onLine && onLine === pts[pts.length - 1]) { svg._skipLast = (svg._skipLast || new Set()).add(n); }
       }
       const last = pts[pts.length - 1];
-      if (!(svg._skipLast && svg._skipLast.has(n))) g += `<text x="${X(last[0]) + 8}" y="${Y(last[1]) + 4}" fill="${c}" font-size="${13 * fs}" font-family="Mono,monospace" font-weight="700">${last[1]}</text>`;
+      if (!(svg._skipLast && svg._skipLast.has(n))) g += `<text x="${X(last[0]) + 8}" y="${Y(last[1]) + 4}" fill="${c}" font-size="${13 * fs}" font-family="Jost,sans-serif" font-variant="tabular-nums">${last[1]}</text>`;
     }
     if (showTrend) for (const n of vis) {
       const tr = trendOf(R.series[n]); if (tr.length < 2) continue;
@@ -611,10 +638,10 @@ function renderUpsets(D) {
   const base = baseSeconds(u1.tc);
   const bz = u1.opp_berserk ? `<span class="note">Footnote: the opponent berserked (${base / 2}s vs his ${base}s)</span>` : "";
   let html = `<article class="u1" data-card="${esc(u1.uid)}"><span class="num">#1 UPSET OF 2026</span><div class="gap">+${u1.gap}</div>
-    <div class="vs">beat <b>${esc(u1.opp)}</b> as ${esc(u1.color)} (${u1.me})</div>
+    <div class="vs"><b>${esc(u1.opp)}</b> as ${esc(u1.color)} (${u1.me})</div>
     <div class="meta" style="color:#D9C9A8">${esc(metaLine(u1))} · ${esc(wonBy(u1.term))} in ${u1.moves} · ${esc(u1.opening || "")}</div>
     <p class="cap">${esc(u1.caption || "")}</p>${bz}<button class="btn" data-play="${esc(u1.uid)}">Replay the upset</button></article>`;
-  html += `<div class="u-rest">` + rest.map((u, i) => `<article class="ux" data-card="${esc(u.uid)}"><div class="rk">#${i + 2}</div><div><div class="g">+${u.gap}</div><div class="d"><b>beat ${esc(u.opp)}</b><br>${esc(u.plat)} ${esc(u.tc)} · ${fmtDate(u.date)} · ${esc(TERM[u.term] || u.term)} in ${u.moves}${u.opp_berserk ? " · opp berserked" : ""}</div></div><button class="btn" data-play="${esc(u.uid)}">Replay</button></article>`).join("") + `</div>`;
+  html += `<div class="u-rest">` + rest.map((u, i) => `<article class="ux" data-card="${esc(u.uid)}"><div class="rk">#${i + 2}</div><div><div class="g">+${u.gap}</div><div class="d"><b>${esc(u.opp)}</b><br>${esc(u.plat)} ${esc(u.tc)} · ${fmtDate(u.date)} · ${esc(TERM[u.term] || u.term)} in ${u.moves}${u.opp_berserk ? " · opp berserked" : ""}</div></div><button class="btn" data-play="${esc(u.uid)}">Replay</button></article>`).join("") + `</div>`;
   $("upset-list").innerHTML = html;
 }
 
@@ -669,7 +696,7 @@ function renderBrilliant(D) {
   $("bm-grid").innerHTML = items.map((it, i) => {
     const year = String(it.date || "").slice(0, 4);
     const old = year && year < "2026";
-    const opp = `Opponent (${Number.isFinite(Number(it.opponent_rating)) ? Number(it.opponent_rating) : "?"})`;
+    const opp = `vs\u00a0Opponent\u00a0(${Number.isFinite(Number(it.opponent_rating)) ? Number(it.opponent_rating) : "?"})`;
     // result is secondary: wins get a short "Won by …", losses/draws stay small and neutral; `how` is optional (null hides it)
     const how = typeof it.how === "string" && it.how.trim() ? it.how.trim() : "";
     const howTxt = how ? ` by ${how === "resigned" ? "resignation" : how === "checkmated" ? "checkmate" : how}` : "";
@@ -744,14 +771,14 @@ const RS_MISSED = "Flag Opponent Who Had Mate in 1"; // key_move_san is the oppo
 const RS_RES = { win: "won", loss: "lost", draw: "draw", W: "won", L: "lost", D: "draw" };
 function rsExample(ex, feat) {
   const missed = feat === RS_MISSED;
-  const opp = `Opponent (${Number.isFinite(Number(ex.opponent_rating)) ? Number(ex.opponent_rating) : "?"})`;
+  const opp = `vs\u00a0Opponent\u00a0(${Number.isFinite(Number(ex.opponent_rating)) ? Number(ex.opponent_rating) : "?"})`;
   const res = RS_RES[ex.result] || "";
   const d = /^\d{4}-\d\d-\d\d$/.test(ex.date || "") ? fmtDate(ex.date) : "";
-  const mv = ex.key_move_san ? (missed ? `<span class="rs-missed">Missed: ${esc(ex.key_move_san)}</span>` : esc(ex.key_move_san)) : "";
+  const mv = ex.key_move_san ? (missed ? `<span class="rs-missed">${esc(ex.key_move_san)}</span>` : esc(ex.key_move_san)) : "";
   const site = /lichess/i.test(ex.site || "") ? "LICHESS" : /chess\.com/i.test(ex.site || "") ? "CHESS.COM" : "";
-  return `<div class="rs-ex">${site ? `<span class="rs-site">${site}</span>` : ""}
+  return `<div class="rs-ex">
       <div class="bm-board rs-board" data-rs-board="${esc(feat)}"></div>
-      <div class="rs-exbody">${mv ? `<div class="rs-mv">${mv}</div>` : ""}
+      <div class="rs-exbody">${site ? `<span class="rs-site">${site}</span>` : ""}${mv ? `<div class="rs-mv">${mv}</div>` : ""}
         ${typeof ex.caption === "string" && ex.caption ? `<p class="rs-cap2">${esc(ex.caption)}</p>` : ""}
         <div class="bm-meta"><b>${esc(opp)}</b>${res ? ` · <span class="bm-res-n">${esc(res)}</span>` : ""}${d || ex.time_class ? "<br>" : ""}${esc(d)}${d && ex.time_class ? " · " : ""}${esc(ex.time_class || "")}</div>
       </div></div>`;
@@ -777,6 +804,12 @@ function renderRosen(D) {
     ? R.per_feat.map((f) => ({ k: f.feat, v: Number(f.combined ?? (Number(f.chesscom) || 0) + (Number(f.lichess) || 0)), cc: f.chesscom, li: f.lichess }))
     : Object.entries(R?.accomplishments || {}).map(([k, v]) => ({ k, v: Number(v) }));
   const feats = PF.filter((f) => f.k && f.v > 0).sort((a, b) => b.v - a.v || a.k.localeCompare(b.k));
+  // Stalemate Tricks is always a draw by rule; never let it take first place on count alone.
+  if (feats[0]?.k === "Stalemate Tricks" && feats.length > 1) {
+    const [st, ...rest] = feats;
+    feats.length = 0;
+    feats.push(rest[0], st, ...rest.slice(1));
+  }
   if (!R || !feats.length) { sec.style.display = "none"; return; }
   const T = R.totals || {}, C = T.combined || {};
   const total = Number(C.trophies ?? R.total_trophies) || feats.reduce((a, f) => a + f.v, 0);
@@ -882,6 +915,14 @@ function initScrollSpy() {
     if (a && nav && nav.scrollWidth > nav.clientWidth) nav.scrollTo({ left: a.offsetLeft - nav.clientWidth / 2 + a.offsetWidth / 2, behavior: "smooth" });
   };
   const pick = () => {
+    const hero = document.getElementById("hero");
+    const nav = document.querySelector(".nav");
+    // When the hero is still in view, clear the section highlight and reset the rail (don't leave it parked on Heatmap).
+    if (hero && hero.getBoundingClientRect().bottom > navOffset() + 80) {
+      set(null);
+      if (nav && nav.scrollLeft > 0) nav.scrollTo({ left: 0, behavior: "smooth" });
+      return;
+    }
     const line = navOffset() + innerHeight * 0.25;
     let id = null;
     for (const s of secs) { if (s.offsetParent === null) continue; if (s.getBoundingClientRect().top <= line) id = s.id; }
@@ -898,14 +939,14 @@ function registerAll(D) {
   for (const u of D.upsets?.items || []) {
     const ex = u.id && REG.get(u.id);
     const st = [`+${u.gap} UPSET`, ...(u.opp_berserk ? ["OPP BERSERKED"] : [])];
-    const g = register(u, ex ? {} : { title: `GIANT SLAYER`, stickers: st, caption: u.caption || `Outrated by ${u.gap} and ${wonBy(u.term)}.` });
+    const g = register(u, ex ? {} : { title: `+${u.gap} · MOVE ${u.moves}`, stickers: st, caption: u.caption || `Outrated by ${u.gap} and ${wonBy(u.term)}.` });
     if (g.score == null) g.score = 10 + u.gap / 40;
     u._uid = g.uid;
   }
   const C = D.clock_chaos || {};
   for (const [list, mode] of [[C.lowest || [], "clock"], [C.minus3 || [], "minus3"]]) for (const c of list) {
     const st = [`${clk(c)} LEFT`, ...(c.deficit <= -3 ? ["−3 AND STILL WON"] : [])];
-    const title = mode === "clock" ? "ZERO-SECOND HERO" : `${minus(c.deficit)} AND STILL WON`;
+    const title = mode === "clock" ? `${clk(c)} LEFT · MOVE ${c.moves}` : `DOWN ${Math.abs(c.deficit)} · MOVE ${c.moves}`;
     const cap = mode === "clock"
       ? `${wonBy(c.term).replace(/^w/, "W")} with ${clk(c)} on his clock after ${c.moves} moves.${c.deficit <= -3 ? ` He was ${minus(c.deficit)} in material at the low point.` : ""}`
       : `Down ${Math.abs(c.deficit)} points of material at the worst moment and still ${wonBy(c.term)}, ${clk(c)} left.`;
@@ -915,7 +956,7 @@ function registerAll(D) {
   }
   for (const e of D.endgame?.items || []) {
     const ex = e.id && REG.get(e.id);
-    const g = register(e, ex ? { key_ply: ex.key_ply ?? e.key_ply } : { title: "THE LONG GAME", stickers: ["QUEENS OFF", ...(e.promoted ? [`${e.promoted}× PROMOTED`] : [])] });
+    const g = register(e, ex ? { key_ply: ex.key_ply ?? e.key_ply } : { title: ENDGAME_TITLES[e.id] || "THE LONG GAME", stickers: ["QUEENS OFF", ...(e.promoted ? [`${e.promoted}× PROMOTED`] : [])] });
     if (g.score == null) g.score = 5;
     e._uid = g.uid;
   }
@@ -926,6 +967,7 @@ function initNavFade() {
   const wrap = document.querySelector(".nav-wrap");
   const nav = wrap && wrap.querySelector(".nav");
   if (!wrap || !nav) return;
+  if (nav.dataset.fadeInit) { nav._fadeUpdate?.(); return; }
   const update = () => {
     // Sum children, not scrollWidth: justify-content:flex-end overflow is off to the left and would read as "fits".
     const content = Array.from(nav.children).reduce((s, el) => s + el.getBoundingClientRect().width, 0);
@@ -936,17 +978,39 @@ function initNavFade() {
     wrap.classList.toggle("fade-left", overflowing && nav.scrollLeft > 2);
     wrap.classList.toggle("fade-right", overflowing && max - nav.scrollLeft > 2);
   };
+  nav._fadeUpdate = update;
+  nav.dataset.fadeInit = "1";
   nav.addEventListener("scroll", update, { passive: true });
+  addEventListener("resize", update);
+  update();
+}
+
+function initScrollerFade(sel) {
+  const el = typeof sel === "string" ? document.querySelector(sel) : sel;
+  if (!el) return;
+  if (el.dataset.fadeInit) { el._fadeUpdate?.(); return; }
+  const update = () => {
+    const max = Math.max(0, el.scrollWidth - el.clientWidth);
+    const overflowing = max > 2;
+    el.classList.toggle("is-overflow", overflowing);
+    el.classList.toggle("fade-right", overflowing && max - el.scrollLeft > 2);
+    el.classList.toggle("fade-left", overflowing && el.scrollLeft > 2);
+  };
+  el._fadeUpdate = update;
+  el.dataset.fadeInit = "1";
+  el.addEventListener("scroll", update, { passive: true });
   addEventListener("resize", update);
   update();
 }
 
 async function main() {
   initNavFade();
+  initScrollerFade(".heat-scroll");
+  if (document.fonts?.ready) document.fonts.ready.then(() => { initNavFade(); initScrollerFade(".heat-scroll"); });
   replay = new Replay($("theater"));
   initTheaterNav();
   let D;
-  try { D = await loadAll(); }
+  try { D = await loadAll((partial) => { try { renderHero(partial); } catch (e) { /* tickets only; full render follows */ } }); }
   catch (e) { console.error(e); $("hero-tickets").innerHTML = `<div class="ticket"><div class="l">Data not found</div><div class="s">${esc(e.message)}</div></div>`; return; }
   window.CLAWBERED_DATA = D;
   registerAll(D);
@@ -954,16 +1018,25 @@ async function main() {
   for (const f of steps) { try { f(D); } catch (e) { console.error(`[CLAWBERED] ${f.name} failed`, e); } }
   hydrateMinis();
   const s = D.summary?.period;
-  $("foot-scope").textContent = s ? `Scope: ${s.label}. ${s.note}` : "";
   const sample = Object.values(D).some((v) => v && typeof v === "object" && v.SAMPLE);
-  $("foot-data").textContent = `Data: ${D._base}${sample ? " (SAMPLE DATA)" : ""} · last games: Chess.com ${s?.last_game?.chesscom || "?"}, Lichess ${s?.last_game?.lichess || "?"}`;
+  $("foot-scope").textContent = s?.label ? `${s.label}, 2026` : "";
+  // Colophon: coverage from the data, not the folder path.
+  $("foot-data").textContent = [s?.note, sample ? "SAMPLE DATA" : ""].filter(Boolean).join(" · ");
   document.documentElement.dataset.ready = "1";
   // deep link to a replay: ?g=<game id>#reel
   const want = new URLSearchParams(location.search).get("g");
   if (want && REG.has(want)) { playGame(want, false); if (!location.hash) location.hash = "reel"; }
   initAnchors();
   initScrollSpy();
+  initNavFade();
+  initScrollerFade(".heat-scroll");
 }
 main();
 
 function shortSub(t) { t = String(t || ""); if (t.length <= 28) return t; const a = t.split(/\s[·\-–—]\s|\s*\(/)[0].trim(); return a.length <= 22 ? a : a.split(", ")[0].trim(); }
+// Keep short phrases from wrapping mid-way: "Jan 1", "of the", "Wall of".
+function nbsp(t) {
+  return String(t || "").replace(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d)/g, "$1\u00a0$2")
+    .replace(/\b(of|vs|to|on)\s+/g, "$1\u00a0")
+    .replace(/(\d),(\d)/g, "$1,\u00a0$2");
+}

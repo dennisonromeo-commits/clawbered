@@ -97,7 +97,19 @@ export class Replay {
     this.$ = (id) => document.getElementById(id);
     this.cg = Chessground(this.$("board"), {
       viewOnly: true, coordinates: true, animation: { enabled: true, duration: 180 },
-      drawable: { enabled: true, visible: true }, highlight: { lastMove: true, check: true },
+      drawable: {
+        enabled: true, visible: true,
+        brushes: {
+          brass: { key: "brass", color: "#B0905A", opacity: 0.9, lineWidth: 11 },
+          green: { key: "g", color: "#B0905A", opacity: 1, lineWidth: 10 },
+          red: { key: "r", color: "#B0905A", opacity: 1, lineWidth: 10 },
+          blue: { key: "b", color: "#8A8178", opacity: 0.8, lineWidth: 10 },
+          yellow: { key: "y", color: "#B0905A", opacity: 1, lineWidth: 10 },
+          paleRed: { key: "pr", color: "#B0905A", opacity: 0.4, lineWidth: 15 },
+          pink: { key: "pink", color: "#B0905A", opacity: 0.6, lineWidth: 10 },
+        },
+      },
+      highlight: { lastMove: true, check: true },
     });
     this.p = 0; this.timer = null; this.game = null; this.flipped = false;
     this.speeds = [0.5, 1, 2]; this.speedIx = 1;
@@ -274,7 +286,7 @@ export class Replay {
     const s = this.pos[p];
     this.cg.set({ fen: s.fen, lastMove: s.lastMove, turnColor: s.turn, check: s.check ? s.turn : false, animation: { enabled: !instant } });
     // key-moment arrow
-    this.cg.setAutoShapes(p === this.keyPos && s.lastMove ? [{ orig: s.lastMove[0], dest: s.lastMove[1], brush: "red" }] : []);
+    this.cg.setAutoShapes(p === this.keyPos && s.lastMove ? [{ orig: s.lastMove[0], dest: s.lastMove[1], brush: "brass" }] : []);
     this.scrub.value = p;
     // clocks
     for (const [el, side] of [[this.$("clk-top"), this.topSide], [this.$("clk-bot"), this.botSide]]) {
