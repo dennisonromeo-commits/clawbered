@@ -695,9 +695,10 @@ function bmDest(it) {
 }
 function renderBrilliant(D) {
   const B = D.brilliant_moves, sec = $("brilliant");
-  const items = (B?.items || []).filter((x) => x && x.fen && x.move_san).slice()
-    // wins first (newest first), then non-wins (newest first), so the first BM_SHOW cards are wins whenever there are enough
-    .sort((a, b) => ((b.result === "W") - (a.result === "W")) || String(b.date || "").localeCompare(String(a.date || "")));
+  const raw = (B?.items || []).filter((x) => x && x.fen && x.move_san);
+  // Keep the file's order. If any non-wins are present, show wins first without otherwise reordering
+  // (so 28.Ra1 on Nov 16 can sit ahead of later-dated cards, as the file specifies).
+  const items = raw.filter((x) => x.result === "W").concat(raw.filter((x) => x.result !== "W"));
   // headline: Chess.com's lifetime brilliancy tally. A `count` that is just the number of items is not that tally, so fall back to 222.
   const c = Number(B?.count);
   $("bm-num").textContent = nf(Number.isFinite(c) && c > items.length ? c : 222);
